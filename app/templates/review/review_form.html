@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="review-container">
+    <div class="event-banner">
+        <div class="event-info">
+            <h1 class="event-title">{{ event.title }}</h1>
+            <div class="event-meta">
+                <span class="event-category">{{ event.category }}</span>
+                <span class="event-date">
+                    <i class="fas fa-calendar"></i>
+                    {{ event.event_date.strftime('%B %d, %Y') }}
+                </span>
+                <span class="event-venue">
+                    <i class="fas fa-map-marker-alt"></i>
+                    {{ event.venue }}
+                </span>
+            </div>
+            {% if event.description %}
+                <p class="event-description">{{ event.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="review-form-container">
+        <div class="form-header">
+            <h2 class="form-title">Share Your Experience</h2>
+            <p class="form-subtitle">Your feedback helps improve future events</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm">
+            {{ form.hidden_tag() }}
+
+            <!-- Step 1: Basic Information -->
+            <div class="form-step active" data-step="1">
+                <h3 class="step-title">Your Information</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.reviewer_name.label(class="form-label") }}
+                        {{ form.reviewer_name(class="form-input") }}
+                        {% for error in form.reviewer_name.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.reviewer_email.label(class="form-label") }}
+                        {{ form.reviewer_email(class="form-input", id="reviewerEmail") }}
+                        {% for error in form.reviewer_email.errors %}
+                            <div class="form-error">{{ error }}</div>
+                        {% endfor %}
+                        <div class="email-check-message" id="emailCheckMessage"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.attendee_type.label(class="form-label") }}
+                    {{ form.attendee_type(class="form-select") }}
+                </div>
+
+                <div class="step-actions">
+                    <button type="button" class="btn btn-primary next-step">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Rating -->
+            <div class="form-step" data-step="2">
+                <h3 class="step-title">Rate Your Experience</h3>
+
+                <div class="rating-container">
+                    <div class="star-rating" id="starRating">
+                        <span class="star" data-rating="1">★</span>
+                        <span class="star" data-rating="2">★</span>
+                        <span class="star" data-rating="3">★</span>
+                        <span class="star" data-rating="4">★</span>
+                        <span class="star" data-rating="5">★</span>
+                    </div>
+                    <div class="rating-text" id="ratingText">Click a star to rate</div>
+                    {{ form.star_rating }}
+                </div>
+
+                <div class="step-actions">
+                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
+                    <button type="button" class="btn btn-primary next-step">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Categories -->
+            <div class="form-step" data-step="3">
+                <h3 class="step-title">What stood out?</h3>
+                <p class="step-subtitle">Select all that apply</p>
+
+                <div class="checkbox-grid">
+                    <div class="checkbox-item">
+                        {{ form.great_sound() }}
+                        {{ form.great_sound.label() }}
+                    </div>
+                    <div class="checkbox-item">
+                        {{ form.good_venue() }}
+                        {{ form.good_venue.label() }}
+                    </div>
+                    <div class="checkbox-item">
+                        {{ form.worth_price() }}
+                        {{ form.worth_price.label() }}
+                    </div>
+                    <div class="checkbox-item">
+                        {{ form.well_organized() }}
+                        {{ form.well_organized.label() }}
+                    </div>
+                    <div class="checkbox-item">
+                        {{ form.would_recommend() }}
+                        {{ form.would_recommend.label() }}
+                    </div>
+                </div>
+
+                <div class="step-actions">
+                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
+                    <button type="button" class="btn btn-primary next-step">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Written Review -->
+            <div class="form-step" data-step="4">
+                <h3 class="step-title">Tell us more (Optional)</h3>
+                <p class="step-subtitle">Share your detailed thoughts</p>
+
+                <div class="form-group">
+                    {{ form.review_text(class="form-textarea", rows="6", placeholder="What did you enjoy most? Any suggestions for improvement?") }}
+                    <div class="character-count">
+                        <span id="charCount">0</span> characters
+                    </div>
+                </div>
+
+                <div class="step-actions">
+                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
+                    {{ form.submit(class="btn btn-primary btn-large", id="submitBtn") }}
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+                <div class="progress-steps">
+                    <div class="progress-step active" data-step="1">1</div>
+                    <div class="progress-step" data-step="2">2</div>
+                    <div class="progress-step" data-step="3">3</div>
+                    <div class="progress-step" data-step="4">4</div>
+                </div>
+            </div>
+        </form>
+
+        <div class="form-footer">
+            <p>Already reviewed this event? <a href="{{ url_for('main.browse_reviews', unique_code=event.unique_code) }}">Browse other reviews</a></p>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+let currentStep = 1;
+const totalSteps = 4;
+
+// Star rating functionality
+const stars = document.querySelectorAll('.star');
+const ratingInput = document.getElementById('star_rating');
+const ratingText = document.getElementById('ratingText');
+
+const ratingMessages = {
+    1: 'Poor - Needs significant improvement',
+    2: 'Fair - Below expectations',
+    3: 'Good - Met expectations',
+    4: 'Very Good - Exceeded expectations',
+    5: 'Excellent - Outstanding experience!'
+};
+
+stars.forEach(star => {
+    star.addEventListener('mouseover', () => {
+        const rating = parseInt(star.dataset.rating);
+        highlightStars(rating);
+        ratingText.textContent = ratingMessages[rating];
+    });
+
+    star.addEventListener('click', () => {
+        const rating = parseInt(star.dataset.rating);
+        ratingInput.value = rating;
+        highlightStars(rating);
+        stars.forEach(s => s.classList.add('selected'));
+        ratingText.textContent = ratingMessages[rating];
+    });
+});
+
+document.querySelector('.star-rating').addEventListener('mouseleave', () => {
+    const currentRating = parseInt(ratingInput.value);
+    if (currentRating) {
+        highlightStars(currentRating);
+        ratingText.textContent = ratingMessages[currentRating];
+    } else {
+        highlightStars(0);
+        ratingText.textContent = 'Click a star to rate';
+    }
+});
+
+function highlightStars(rating) {
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+}
+
+// Step navigation
+document.querySelectorAll('.next-step').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (validateCurrentStep()) {
+            nextStep();
+        }
+    });
+});
+
+document.querySelectorAll('.prev-step').forEach(btn => {
+    btn.addEventListener('click', prevStep);
+});
+
+function nextStep() {
+    if (currentStep < totalSteps) {
+        document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
+        currentStep++;
+        document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+        updateProgress();
+    }
+}
+
+function prevStep() {
+    if (currentStep > 1) {
+        document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
+        currentStep--;
+        document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+        updateProgress();
+    }
+}
+
+function updateProgress() {
+    const progressFill = document.getElementById('progressFill');
+    const progressSteps = document.querySelectorAll('.progress-step');
+
+    const percentage = (currentStep / totalSteps) * 100;
+    progressFill.style.width = percentage + '%';
+
+    progressSteps.forEach((step, index) => {
+        if (index < currentStep) {
+            step.classList.add('active');
+        } else {
+            step.classList.remove('active');
+        }
+    });
+}
+
+function validateCurrentStep() {
+    switch (currentStep) {
+        case 1:
+            const name = document.getElementById('reviewer_name').value.trim();
+            const email = document.getElementById('reviewerEmail').value.trim();
+            if (!name || !email) {
+                showAlert('error', 'Please fill in your name and email');
+                return false;
+            }
+            return true;
+        case 2:
+            if (!ratingInput.value) {
+                showAlert('error', 'Please select a rating');
+                return false;
+            }
+            return true;
+        default:
+            return true;
+    }
+}
+
+// Email validation
+let emailCheckTimeout;
+document.getElementById('reviewerEmail').addEventListener('input', (e) => {
+    clearTimeout(emailCheckTimeout);
+    emailCheckTimeout = setTimeout(() => {
+        checkEmail(e.target.value);
+    }, 500);
+});
+
+function checkEmail(email) {
+    if (!email) return;
+
+    fetch('/api/check-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            email: email,
+            unique_code: '{{ event.unique_code }}'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const messageDiv = document.getElementById('emailCheckMessage');
+        if (data.exists) {
+            messageDiv.textContent = data.message;
+            messageDiv.className = 'email-check-message error';
+        } else {
+            messageDiv.textContent = '';
+            messageDiv.className = 'email-check-message';
+        }
+    });
+}
+
+// Character count
+const reviewTextarea = document.getElementById('review_text');
+const charCount = document.getElementById('charCount');
+
+reviewTextarea.addEventListener('input', () => {
+    charCount.textContent = reviewTextarea.value.length;
+});
+
+// Form submission with loading state
+document.getElementById('reviewForm').addEventListener('submit', (e) => {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    submitBtn.disabled = true;
+});
+
+// Initialize progress
+updateProgress();
+</script>
+{% endblock %}

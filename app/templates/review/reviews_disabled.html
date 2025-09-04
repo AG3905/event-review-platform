@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="message-container">
+    <div class="message-card">
+        <div class="message-icon">
+            <i class="fas fa-lock"></i>
+        </div>
+
+        <h1 class="message-title">Reviews Not Available</h1>
+        <p class="message-text">Reviews for "{{ event.title }}" are currently disabled by the organizer.</p>
+
+        <div class="message-actions">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

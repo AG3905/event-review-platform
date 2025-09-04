@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="hero-title">Collect Event Reviews Like a Pro</h1>
+            <p class="hero-subtitle">Create events, share QR codes, and gather valuable feedback from your audience with our streamlined review platform.</p>
+
+            <div class="hero-buttons">
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-large">Get Started Free</a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-secondary btn-large">Sign In</a>
+                {% else %}
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary btn-large">Go to Dashboard</a>
+                    <a href="{{ url_for('main.create_event') }}" class="btn btn-secondary btn-large">Create Event</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="hero-image">
+            <div class="feature-preview">
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <div class="preview-stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <span class="preview-rating">4.8/5</span>
+                    </div>
+                    <p class="preview-text">"Amazing concert! Great sound quality and fantastic atmosphere."</p>
+                    <div class="preview-author">- Sarah M.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="features-section">
+    <div class="container">
+        <h2 class="section-title">Why Choose Our Platform?</h2>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <h3 class="feature-title">Easy QR Code Sharing</h3>
+                <p class="feature-description">Generate QR codes instantly for your events. Attendees can scan and review in seconds.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="feature-title">Detailed Analytics</h3>
+                <p class="feature-description">Track ratings, response rates, and trends with comprehensive dashboard analytics.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h3 class="feature-title">Mobile Optimized</h3>
+                <p class="feature-description">Perfect experience on all devices. Your attendees can review from anywhere.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h3 class="feature-title">Export Data</h3>
+                <p class="feature-description">Download your reviews as CSV files for further analysis and reporting.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="feature-title">Spam Protection</h3>
+                <p class="feature-description">One review per email ensures authentic feedback and prevents spam reviews.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <h3 class="feature-title">Easy Management</h3>
+                <p class="feature-description">Approve, feature, and manage reviews with our intuitive admin interface.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Get Better Event Feedback?</h2>
+            <p class="cta-subtitle">Join thousands of event organizers who trust our platform.</p>
+            {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-large">Start Free Today</a>
+            {% else %}
+                <a href="{{ url_for('main.create_event') }}" class="btn btn-primary btn-large">Create Your First Event</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

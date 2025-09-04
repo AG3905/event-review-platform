@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-card">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+
+        <h1 class="success-title">Thank You!</h1>
+        <p class="success-message">Your review for "{{ event.title }}" has been submitted successfully.</p>
+
+        <div class="success-actions">
+            <a href="{{ url_for('main.browse_reviews', unique_code=event.unique_code) }}" class="btn btn-primary">
+                <i class="fas fa-comments"></i> Browse Other Reviews
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    {% if recent_reviews %}
+    <div class="recent-reviews">
+        <h3 class="reviews-title">Recent Reviews</h3>
+        <div class="reviews-preview">
+            {% for review in recent_reviews %}
+                <div class="review-preview">
+                    <div class="review-header">
+                        <div class="review-rating">
+                            {% for i in range(1, 6) %}
+                                <i class="fas fa-star {% if i <= review.star_rating %}active{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                        <span class="review-author">{{ review.reviewer_name }}</span>
+                    </div>
+                    {% if review.review_text %}
+                        <p class="review-text">{{ review.review_text[:100] }}{% if review.review_text|length > 100 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

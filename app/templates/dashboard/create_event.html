@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1 class="form-title">Create New Event</h1>
+        <p class="form-subtitle">Fill in the details for your event</p>
+    </div>
+
+    <form method="POST" class="event-form">
+        {{ form.hidden_tag() }}
+
+        <div class="form-section">
+            <h3 class="section-title">Event Information</h3>
+
+            <div class="form-group">
+                {{ form.title.label(class="form-label") }}
+                {{ form.title(class="form-input") }}
+                {% for error in form.title.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.category.label(class="form-label") }}
+                    {{ form.category(class="form-select") }}
+                    {% for error in form.category.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.venue.label(class="form-label") }}
+                    {{ form.venue(class="form-input") }}
+                    {% for error in form.venue.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.description.label(class="form-label") }}
+                {{ form.description(class="form-textarea", rows="4", placeholder="Describe your event...") }}
+                {% for error in form.description.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">Date & Details</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.event_date.label(class="form-label") }}
+                    {{ form.event_date(class="form-input") }}
+                    {% for error in form.event_date.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.event_time.label(class="form-label") }}
+                    {{ form.event_time(class="form-input") }}
+                    {% for error in form.event_time.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.capacity.label(class="form-label") }}
+                    {{ form.capacity(class="form-input", placeholder="Optional") }}
+                    {% for error in form.capacity.errors %}
+                        <div class="form-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">Cancel</a>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endblock %}
