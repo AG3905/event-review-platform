@@ -19,8 +19,9 @@ def generate_qr_code(url, filename):
     # Create QR code image
     img = qr.make_image(fill_color="black", back_color="white")
 
-    # Save to static directory
-    qr_dir = os.path.join('app', 'static', 'qr_codes')
+    # Save to static directory inside this app package
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    qr_dir = os.path.join(base_dir, 'static', 'qr_codes')
     if not os.path.exists(qr_dir):
         os.makedirs(qr_dir)
 
@@ -31,7 +32,9 @@ def generate_qr_code(url, filename):
 
 def export_reviews_csv(event):
     """Export event reviews to CSV file"""
-    csv_dir = os.path.join('app', 'static', 'exports')
+    # Save exports to static directory inside this app package
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_dir = os.path.join(base_dir, 'static', 'exports')
     if not os.path.exists(csv_dir):
         os.makedirs(csv_dir)
 
