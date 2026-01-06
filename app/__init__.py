@@ -13,7 +13,14 @@ def create_app():
 
     # Configuration
     app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///event_reviews.db'
+    # Use the Render database URL if available, otherwise use SQLite
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///event_reviews.db')
+    
+    # Fix for Render's postgres:// URL (SQLAlchemy requires postgresql://)
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
 
