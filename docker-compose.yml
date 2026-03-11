@@ -3,11 +3,12 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn "app:create_app()" -w 4 -b 0.0.0.0:8000
+    command: sh -c "gunicorn \"app:create_app()\" -w 4 -b 0.0.0.0:${PORT:-8000}"
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     environment:
       - FLASK_DEBUG=0
+      - PORT=8000
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/eventdb
       - RATELIMIT_STORAGE_URL=redis://redis:6379/0
       - FILE_STORAGE_PATH=/data

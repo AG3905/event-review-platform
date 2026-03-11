@@ -12,6 +12,12 @@ import os
 def index():
     return render_template('index.html', title='Event Review Platform')
 
+
+@bp.route('/health')
+def health():
+    # Simple health check endpoint for load balancers/hosts
+    return jsonify({'status': 'ok'}), 200
+
 @bp.route('/dashboard')
 @login_required
 def dashboard():

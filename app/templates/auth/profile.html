@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Profile</h2>
+    <div class="profile-grid">
+        <div class="profile-card">
+            <h3>Account Details</h3>
+            <form method="post">
+                {{ profile_form.hidden_tag() }}
+
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.username.label.text }}</label>
+                    {{ profile_form.username(class="form-control", placeholder="Choose a username") }}
+                    <div class="form-help">Your unique username for login and display.</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.email.label.text }}</label>
+                    {{ profile_form.email(class="form-control", placeholder="you@example.com") }}
+                    <div class="form-help">We'll never share your email publicly.</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.full_name.label.text }}</label>
+                    {{ profile_form.full_name(class="form-control", placeholder="Full name") }}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.organization.label.text }}</label>
+                    {{ profile_form.organization(class="form-control", placeholder="Organization (optional)") }}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" name="profile_submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="profile-card">
+            <h3>Change Password</h3>
+            <form method="post">
+                {{ password_form.hidden_tag() }}
+
+                <div class="form-group">
+                    <label class="form-label">{{ password_form.old_password.label.text }}</label>
+                    {{ password_form.old_password(class="form-control", placeholder="Current password") }}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ password_form.new_password.label.text }}</label>
+                    {{ password_form.new_password(class="form-control", placeholder="New password") }}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ password_form.new_password2.label.text }}</label>
+                    {{ password_form.new_password2(class="form-control", placeholder="Confirm new password") }}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" name="password_submit" class="btn btn-warning">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

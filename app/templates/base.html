@@ -28,7 +28,7 @@
                                 <i class="fas fa-user"></i> {{ current_user.full_name or current_user.username }}
                             </a>
                             <div class="dropdown-content">
-                                <a href="#" class="dropdown-link">Profile</a>
+                                <a href="{{ url_for('auth.profile') }}" class="dropdown-link">Profile</a>
                                 <a href="{{ url_for('auth.logout') }}" class="dropdown-link">Logout</a>
                             </div>
                         </div>

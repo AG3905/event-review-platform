@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, current_user, login_required
 from app.auth import bp
 from app.models import User, db
-from app.forms import LoginForm, RegistrationForm
+from app.forms import LoginForm, RegistrationForm, ProfileForm, ChangePasswordForm
 from datetime import datetime
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -52,3 +52,30 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('main.index'))
+
+
+@bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    profile_form = ProfileForm(obj=current_user)
+    password_form = ChangePasswordForm()
+
+    # Handle profile update
+    if profile_form.submit.data and profile_form.validate_on_submit() and request.form.get('profile_submit'):
+        current_user.username = profile_form.username.data
+        current_user.email = profile_form.email.data
+        current_user.full_name = profile_form.full_name.data
+        current_user.organization = profile_form.organization.data
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+        return redirect(url_for('auth.profile'))
+
+    # Handle password change
+    if password_form.submit.data and password_form.validate_on_submit() and request.form.get('password_submit'):
+        current_user.set_password(password_form.new_password.data)
+        db.session.commit()
+        flash('Password changed successfully. Please log in again.', 'success')
+        logout_user()
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/profile.html', title='Profile', profile_form=profile_form, password_form=password_form)

@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, DateField, TimeField, IntegerField, BooleanField, PasswordField, SubmitField, HiddenField
 from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, EqualTo, ValidationError
 from app.models import User, Event
+from flask_login import current_user
 from datetime import date
 
 class LoginForm(FlaskForm):
@@ -86,3 +87,34 @@ class EditEventForm(FlaskForm):
                         validators=[DataRequired()])
     allow_reviews = BooleanField('Allow Reviews')
     submit = SubmitField('Update Event')
+
+
+class ProfileForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    full_name = StringField('Full Name', validators=[Optional(), Length(max=100)])
+    organization = StringField('Organization', validators=[Optional(), Length(max=100)])
+    submit = SubmitField('Save Changes')
+
+    def validate_username(self, username):
+        if username.data != current_user.username:
+            user = User.query.filter_by(username=username.data).first()
+            if user:
+                raise ValidationError('Username already exists. Please choose a different one.')
+
+    def validate_email(self, email):
+        if email.data != current_user.email:
+            user = User.query.filter_by(email=email.data).first()
+            if user:
+                raise ValidationError('Email already registered. Please use a different email address.')
+
+
+class ChangePasswordForm(FlaskForm):
+    old_password = PasswordField('Current Password', validators=[DataRequired()])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
+    new_password2 = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password')])
+    submit = SubmitField('Change Password')
+
+    def validate_old_password(self, field):
+        if not current_user.check_password(field.data):
+            raise ValidationError('Current password is incorrect.')

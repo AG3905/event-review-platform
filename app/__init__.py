@@ -77,6 +77,24 @@ def create_app():
         stream_handler.setLevel(logging.INFO)
         app.logger.addHandler(stream_handler)
 
+    # Sentry integration (optional)
+    sentry_dsn = os.environ.get('SENTRY_DSN')
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.flask import FlaskIntegration
+
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[FlaskIntegration()],
+                traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.0')),
+                send_default_pii=False,
+                environment=os.environ.get('FLASK_ENV', 'production' if not is_debug else 'development')
+            )
+            app.logger.info('Sentry initialized')
+        except Exception:
+            app.logger.exception('Failed to initialize Sentry')
+
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)

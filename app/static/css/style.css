@@ -133,6 +133,13 @@ h6 { font-size: 1rem; }
     transform: translateY(0);
 }
 
+/* When toggled open via JS (mobile/touch), show dropdown */
+.nav-dropdown.open .dropdown-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
 .dropdown-link {
     display: block;
     padding: 0.75rem 1rem;
@@ -445,12 +452,30 @@ h6 { font-size: 1rem; }
     background: white;
 }
 
+/* Alias for templates that use .form-control */
+.form-control { 
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: white;
+    color: var(--text-dark);
+}
+
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
 .form-textarea {
@@ -462,6 +487,45 @@ h6 { font-size: 1rem; }
     color: var(--error-color);
     font-size: 0.75rem;
     margin-top: 0.25rem;
+}
+
+/* Enhanced form layout for labels and inputs */
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+}
+
+/* Submit buttons */
+.btn-primary {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Inline helper text */
+.form-help {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.35rem;
+}
+
+/* Error state for inputs */
+.form-input.error,
+.form-control.error,
+.form-select.error {
+    border-color: var(--error-color);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.06);
 }
 
 .checkbox-group {
@@ -489,6 +553,27 @@ h6 { font-size: 1rem; }
     gap: 1rem;
     justify-content: flex-end;
     margin-top: 2rem;
+}
+
+/* Profile page layout */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.profile-card {
+    background: var(--background-white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    padding: 1.5rem;
+}
+
+@media (max-width: 800px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Authentication */

@@ -39,8 +39,28 @@ function initializeNavigation() {
             if (!navToggle.contains(e.target) && !navMenu.contains(e.target)) {
                 navMenu.classList.remove('active');
             }
+
+            // Close any open dropdowns when clicking outside
+            const openDropdowns = document.querySelectorAll('.nav-dropdown.open');
+            openDropdowns.forEach(dd => {
+                if (!dd.contains(e.target)) {
+                    dd.classList.remove('open');
+                }
+            });
         });
     }
+
+    // Dropdown toggle click handling (for mobile/touch devices)
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const parent = toggle.closest('.nav-dropdown');
+            if (!parent) return;
+            // Toggle open state
+            parent.classList.toggle('open');
+        });
+    });
 }
 
 // Alert system

@@ -125,6 +125,52 @@ For production deployment, ensure to:
 - Enable HTTPS
 - Set up proper logging
 
+## Deploying to Render (recommended for interview/demo)
+
+Render requires explicit Build and Start commands and exposes the `PORT` environment variable to your service.
+
+Recommended Render settings:
+
+- Build Command (runs once during deploy):
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+- Start Command (keeps the app running; Render expects a long-lived process):
+
+   ```bash
+   gunicorn "app:create_app()" -w 4 -b 0.0.0.0:$PORT
+   ```
+
+- Release Command (run once after deploy to apply database migrations):
+
+   ```bash
+   flask db upgrade
+   ```
+
+Environment variables to add in the Render Dashboard (minimum):
+
+- `SECRET_KEY` — strong secret used for sessions and CSRF (required)
+- `DATABASE_URL` — e.g. `postgresql://user:pass@host:5432/dbname`
+- `FLASK_DEBUG=false`
+
+Optional / recommended:
+
+- `RATELIMIT_STORAGE_URL` — e.g. `redis://:<password>@redis-host:6379/0` if you use rate limiting
+- `SENTRY_DSN` — to enable error reporting in Sentry (optional)
+- `FILE_STORAGE_PATH` — path to a mounted persistent disk if you want to persist generated files
+
+Health check:
+
+- Point Render's health check to `GET /health` (responds with HTTP 200 and JSON `{"status":"ok"}`)
+
+Notes:
+
+- Do not set `PORT` manually in the environment — Render injects it at runtime.
+- If you need persistent storage for generated files (QR codes / CSV exports), either mount a Render Persistent Disk at `FILE_STORAGE_PATH` or implement S3 uploads.
+
+
 ## Security Features
 
 - **CSRF Protection**: All forms protected against CSRF attacks
