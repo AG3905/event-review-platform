@@ -19,11 +19,14 @@ def generate_qr_code(url, filename):
     # Create QR code image
     img = qr.make_image(fill_color="black", back_color="white")
 
-    # Save to static directory inside this app package
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    qr_dir = os.path.join(base_dir, 'static', 'qr_codes')
-    if not os.path.exists(qr_dir):
-        os.makedirs(qr_dir)
+    # Storage path can be overridden in production via FILE_STORAGE_PATH
+    storage_base = os.environ.get('FILE_STORAGE_PATH')
+    if storage_base:
+        qr_dir = os.path.join(storage_base, 'qr_codes')
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        qr_dir = os.path.join(base_dir, 'static', 'qr_codes')
+    os.makedirs(qr_dir, exist_ok=True)
 
     qr_path = os.path.join(qr_dir, f'{filename}.png')
     img.save(qr_path)
@@ -32,11 +35,14 @@ def generate_qr_code(url, filename):
 
 def export_reviews_csv(event):
     """Export event reviews to CSV file"""
-    # Save exports to static directory inside this app package
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_dir = os.path.join(base_dir, 'static', 'exports')
-    if not os.path.exists(csv_dir):
-        os.makedirs(csv_dir)
+    # Storage path can be overridden in production via FILE_STORAGE_PATH
+    storage_base = os.environ.get('FILE_STORAGE_PATH')
+    if storage_base:
+        csv_dir = os.path.join(storage_base, 'exports')
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_dir = os.path.join(base_dir, 'static', 'exports')
+    os.makedirs(csv_dir, exist_ok=True)
 
     filename = f'reviews_{event.unique_code}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
     csv_path = os.path.join(csv_dir, filename)

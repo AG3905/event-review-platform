@@ -7,6 +7,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
 import os
+import logging
+from logging.handlers import RotatingFileHandler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -19,7 +24,19 @@ def create_app():
     app = Flask(__name__)
 
     # Configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-please-change')
+    is_debug = os.environ.get('FLASK_DEBUG', 'True') == 'True'
+    app.debug = is_debug
+    # Security-related cookie settings
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    app.config['SESSION_COOKIE_SECURE'] = not is_debug
+    app.config['REMEMBER_COOKIE_SECURE'] = not is_debug
+    
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key and not is_debug:
+        raise RuntimeError("SECRET_KEY must be set in production environment!")
+    app.config['SECRET_KEY'] = secret_key or 'default-dev-key-please-change'
+    
     # Use the Render database URL if available, otherwise use SQLite
     database_url = os.environ.get('DATABASE_URL', 'sqlite:///event_reviews.db')
     
@@ -30,6 +47,35 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
+
+    # SQLAlchemy engine tuning for production
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': int(os.environ.get('DB_POOL_SIZE', 10)),
+        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 20)),
+        'pool_pre_ping': True
+    }
+
+    # Rate limiter storage (use Redis in production)
+    ratelimit_url = os.environ.get('RATELIMIT_STORAGE_URL')
+    if ratelimit_url:
+        app.config['RATELIMIT_STORAGE_URL'] = ratelimit_url
+
+    # Logging setup
+    if not app.debug:
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        file_handler = RotatingFileHandler('logs/event_platform.log', maxBytes=10240, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Event Review Platform startup')
+        # Ensure logs also go to stdout for containerized platforms
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        app.logger.addHandler(stream_handler)
 
     # Initialize extensions
     db.init_app(app)
