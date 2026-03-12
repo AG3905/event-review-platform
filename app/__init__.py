@@ -48,12 +48,17 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
 
-    # SQLAlchemy engine tuning for production
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': int(os.environ.get('DB_POOL_SIZE', 10)),
-        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 20)),
-        'pool_pre_ping': True
-    }
+    # SQLAlchemy engine tuning for production (pool options only for non-SQLite)
+    if not database_url.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_size': int(os.environ.get('DB_POOL_SIZE', 10)),
+            'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 20)),
+            'pool_pre_ping': True,
+        }
+    else:
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+        }
 
     # Rate limiter storage (use Redis in production)
     ratelimit_url = os.environ.get('RATELIMIT_STORAGE_URL')
