@@ -9,7 +9,7 @@ services:
     name: event-review-platform
     runtime: python
     plan: free
-    buildCommand: "./build.sh"
+    buildCommand: "bash build.sh"
     startCommand: "gunicorn 'app:create_app()' -w 4 -b 0.0.0.0:$PORT --log-level info"
     envVars:
       - key: DATABASE_URL
