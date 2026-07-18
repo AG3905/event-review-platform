@@ -19,7 +19,7 @@ Build vs Start command (Render / Heroku)
 
   - `web: gunicorn "app:create_app()" -w 4 -b 0.0.0.0:$PORT`
 
-- On Render, put build steps in Build Command and use the Start Command above. If Start exits quickly, the platform marks the app as crashed.
+- On Render, use the repository's `bash build.sh` build command. It installs dependencies and runs `flask db upgrade`; the Gunicorn start command remains long-lived.
 
 Case sensitivity (Linux hosts)
 ------------------------------
@@ -29,6 +29,8 @@ Case sensitivity (Linux hosts)
 Quick checks before deploy
 --------------------------
 - Ensure `SECRET_KEY` is configured in your platform's environment (do not commit `.env`).
+- Set `DATABASE_URL` to the existing Supabase PostgreSQL connection string. `render.yaml` intentionally does not provision a replacement database.
+- Set `PLATFORM_ADMIN_EMAIL` to the existing organizer account that should be promoted to Platform Admin on its next successful sign-in.
 - Add `RATELIMIT_STORAGE_URL` (Redis) in production for consistent rate-limiting across workers.
 - Use persistent/object storage for generated files (set `FILE_STORAGE_PATH` or implement S3 uploads).
-- Add a release hook to run migrations: `flask db upgrade`.
+- If migrations are not run through `build.sh`, run `flask db upgrade` once using the production `DATABASE_URL` before starting the service.

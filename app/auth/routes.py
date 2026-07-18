@@ -4,21 +4,32 @@ from app.auth import bp
 from app.models import User, db
 from app.forms import LoginForm, RegistrationForm, ProfileForm, ChangePasswordForm
 from datetime import datetime
+import os
+
+
+def _dashboard_for(user):
+    return url_for('main.admin_dashboard' if user.is_platform_admin else 'main.dashboard')
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
+        return redirect(_dashboard_for(current_user))
 
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
+            # Public registration only creates organizers. The one elevated
+            # role is provisioned from the deployment environment.
+            admin_email = os.environ.get('PLATFORM_ADMIN_EMAIL', '').strip().lower()
+            if admin_email and user.email.lower() == admin_email and user.role != 'admin':
+                user.role = 'admin'
+                db.session.commit()
             login_user(user, remember=form.remember_me.data)
             user.update_last_login()
             next_page = request.args.get('next')
             if not next_page or not next_page.startswith('/'):
-                next_page = url_for('main.dashboard')
+                next_page = _dashboard_for(user)
             flash(f'Welcome back, {user.full_name or user.username}!', 'success')
             return redirect(next_page)
         flash('Invalid username or password', 'error')
@@ -28,7 +39,7 @@ def login():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
+        return redirect(_dashboard_for(current_user))
 
     form = RegistrationForm()
     if form.validate_on_submit():
@@ -36,7 +47,8 @@ def register():
             username=form.username.data,
             email=form.email.data,
             full_name=form.full_name.data,
-            organization=form.organization.data
+            organization=form.organization.data,
+            role='organizer'
         )
         user.set_password(form.password.data)
         db.session.add(user)

@@ -87,7 +87,9 @@
                                     <span class="stat-label">Rating</span>
                                 </div>
                                 <div class="stat">
-                                    <span class="stat-value status-{{ event.status }}">{{ event.status|title }}</span>
+                                    <span class="stat-value status-{{ event.current_status }} js-event-status"
+                                          data-scheduled-at="{{ event.event_date.isoformat() }}T{{ event.event_time.strftime('%H:%M:%S') if event.event_time else '00:00:00' }}"
+                                          data-stored-status="{{ event.status }}">{{ event.current_status|title }}</span>
                                 </div>
                             </div>
 

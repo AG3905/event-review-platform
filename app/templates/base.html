@@ -6,8 +6,10 @@
     <title>{% if title %}{{ title }} - {% endif %}Event Review Platform</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
+    <div class="ambient-background" aria-hidden="true"><span></span><span></span><span></span></div>
     <header class="header">
         <nav class="navbar">
             <div class="nav-container">
@@ -16,13 +18,21 @@
                 </a>
 
                 <div class="nav-menu" id="nav-menu">
-                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_authenticated and current_user.is_platform_admin %}
+                        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-link"><i class="fas fa-shield-halved"></i> Admin Console</a>
+                        <a href="{{ url_for('main.admin_organizers') }}" class="nav-link">Organizers</a>
+                        <a href="{{ url_for('main.admin_events') }}" class="nav-link">Events</a>
+                        <a href="{{ url_for('main.admin_reviews') }}" class="nav-link">Reviews</a>
+                        <a href="{{ url_for('main.admin_analytics') }}" class="nav-link">Analytics</a>
+                    {% elif current_user.is_authenticated %}
                         <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                         <a href="{{ url_for('main.create_event') }}" class="nav-link">
                             <i class="fas fa-plus"></i> Create Event
                         </a>
+                        <a href="{{ url_for('main.organizer_reviews') }}" class="nav-link">Reviews</a>
+                        <a href="{{ url_for('main.organizer_analytics') }}" class="nav-link">Analytics</a>
                         <div class="nav-dropdown">
                             <a href="#" class="nav-link dropdown-toggle">
                                 <i class="fas fa-user"></i> {{ current_user.full_name or current_user.username }}
@@ -34,7 +44,7 @@
                         </div>
                     {% else %}
                         <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="nav-link btn-primary">Register</a>
+                        <a href="{{ url_for('auth.register') }}" class="nav-link btn-primary">Organizer Sign Up</a>
                     {% endif %}
                 </div>
 

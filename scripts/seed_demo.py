@@ -21,7 +21,7 @@ def create_demo_user(username, email, password):
         print(f"Demo user '{username}' already exists (id={existing.id}).")
         return existing
 
-    user = User(username=username, email=email, full_name='Demo User')
+    user = User(username=username, email=email, full_name='Demo User', role='organizer')
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -67,4 +67,3 @@ if __name__ == '__main__':
         print(f'  Username: {username}')
         print(f'  Email: {email}')
         print(f'  Password: {password}')
-*** End Patch

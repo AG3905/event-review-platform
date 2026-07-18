@@ -1,16 +1,22 @@
-from flask import jsonify, request
+from flask import jsonify, request, abort
 from flask_login import login_required, current_user
 from app.api import bp
 from app.models import Event, Review, db
+from app.decorators import organizer_required
+
+
+def _manageable_review_or_404(review_id):
+    if not (current_user.is_platform_admin or current_user.is_organizer):
+        abort(403)
+    query = Review.query.filter_by(id=review_id)
+    if current_user.is_organizer:
+        query = query.join(Event).filter(Event.user_id == current_user.id)
+    return query.first_or_404()
 
 @bp.route('/review/<int:review_id>/approve', methods=['POST'])
 @login_required
 def approve_review(review_id):
-    review = Review.query.get_or_404(review_id)
-
-    # Check ownership
-    if review.event.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
+    review = _manageable_review_or_404(review_id)
 
     review.is_approved = True
     db.session.commit()
@@ -20,11 +26,7 @@ def approve_review(review_id):
 @bp.route('/review/<int:review_id>/reject', methods=['POST'])
 @login_required
 def reject_review(review_id):
-    review = Review.query.get_or_404(review_id)
-
-    # Check ownership
-    if review.event.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
+    review = _manageable_review_or_404(review_id)
 
     review.is_approved = False
     db.session.commit()
@@ -34,11 +36,7 @@ def reject_review(review_id):
 @bp.route('/review/<int:review_id>/feature', methods=['POST'])
 @login_required
 def feature_review(review_id):
-    review = Review.query.get_or_404(review_id)
-
-    # Check ownership
-    if review.event.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
+    review = _manageable_review_or_404(review_id)
 
     review.is_featured = not review.is_featured
     db.session.commit()
@@ -52,11 +50,7 @@ def feature_review(review_id):
 @bp.route('/review/<int:review_id>/delete', methods=['DELETE'])
 @login_required
 def delete_review(review_id):
-    review = Review.query.get_or_404(review_id)
-
-    # Check ownership
-    if review.event.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
+    review = _manageable_review_or_404(review_id)
 
     db.session.delete(review)
     db.session.commit()
@@ -66,11 +60,12 @@ def delete_review(review_id):
 @bp.route('/event/<int:event_id>/analytics', methods=['GET'])
 @login_required
 def event_analytics(event_id):
-    event = Event.query.get_or_404(event_id)
-
-    # Check ownership
-    if event.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
+    if not (current_user.is_platform_admin or current_user.is_organizer):
+        abort(403)
+    query = Event.query.filter_by(id=event_id)
+    if current_user.is_organizer:
+        query = query.filter_by(user_id=current_user.id)
+    event = query.first_or_404()
 
     reviews = [r for r in event.reviews if r.is_approved]
 

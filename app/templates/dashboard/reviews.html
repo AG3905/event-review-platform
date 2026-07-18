@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-container">
+    <div class="section-header"><h1 class="section-title">My Reviews</h1><a class="btn btn-secondary" href="{{ url_for('main.organizer_analytics') }}">View Analytics</a></div>
+    <div class="reviews-container">
+        {% for review in reviews %}
+        <article class="review-card"><div class="review-header"><strong>{{ review.reviewer_name }}</strong><span>{{ review.event.title }} · {{ review.star_rating }}/5</span></div>{% if review.review_text %}<p class="review-text">{{ review.review_text }}</p>{% endif %}</article>
+        {% else %}<div class="empty-state">No reviews yet.</div>{% endfor %}
+    </div>
+</div>
+{% endblock %}

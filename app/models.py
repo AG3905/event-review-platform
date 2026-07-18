@@ -2,7 +2,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import json
+import os
 import string
 import random
 from app import db
@@ -19,6 +21,9 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
+    # Only authenticated roles in the application. Public reviewers never have
+    # a User row and submit reviews through an event's public link.
+    role = db.Column(db.String(20), nullable=False, default='organizer', index=True)
 
     # Relationships
     events = db.relationship('Event', backref='organizer', lazy=True, cascade='all, delete-orphan')
@@ -46,11 +51,21 @@ class User(UserMixin, db.Model):
                 all_ratings.append(review.star_rating)
         return sum(all_ratings) / len(all_ratings) if all_ratings else 0
 
+    @property
+    def is_platform_admin(self):
+        return self.role == 'admin'
+
+    @property
+    def is_organizer(self):
+        return self.role == 'organizer'
+
 class Event(db.Model):
     __tablename__ = 'events'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # user_id is the organizer ownership key retained for backwards-compatible
+    # migrations. `organizer` is the relationship name exposed by the model.
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
@@ -78,6 +93,35 @@ class Event(db.Model):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
             if not Event.query.filter_by(unique_code=code).first():
                 return code
+
+    @staticmethod
+    def current_datetime():
+        timezone_name = os.environ.get('EVENT_TIMEZONE', '').strip()
+        if timezone_name:
+            try:
+                return datetime.now(ZoneInfo(timezone_name)).replace(tzinfo=None)
+            except ZoneInfoNotFoundError:
+                pass
+        return datetime.now()
+
+    def get_current_status(self, now=None):
+        if self.status == 'cancelled':
+            return 'cancelled'
+        if self.status == 'completed':
+            return 'completed'
+
+        current_time = now or self.current_datetime()
+        scheduled_time = datetime.combine(self.event_date, self.event_time or time.min)
+
+        if current_time.date() > self.event_date:
+            return 'completed'
+        if current_time >= scheduled_time:
+            return 'live'
+        return 'upcoming'
+
+    @property
+    def current_status(self):
+        return self.get_current_status()
 
     def get_review_count(self):
         return len(self.reviews)

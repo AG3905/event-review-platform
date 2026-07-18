@@ -1,15 +1,53 @@
 from flask import Flask
+from markupsafe import Markup
+import flask as flask_module
+import werkzeug.urls as werkzeug_urls
+from urllib.parse import urlencode
+
+if not hasattr(flask_module, 'Markup'):
+    flask_module.Markup = Markup
+
+if not hasattr(werkzeug_urls, 'url_encode'):
+    def url_encode(query, charset='utf-8', sort=False, key=None, separator='&'):
+        return urlencode(query, doseq=True)
+
+    werkzeug_urls.url_encode = url_encode
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
-from flask_talisman import Talisman
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_migrate import Migrate
 import os
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+
+try:
+    from flask_talisman import Talisman
+except ImportError:
+    class Talisman:  # type: ignore[override]
+        def init_app(self, app, content_security_policy=None):
+            return None
+
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+except ImportError:
+    def get_remote_address():
+        return '127.0.0.1'
+
+    class Limiter:  # type: ignore[override]
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def init_app(self, app):
+            return None
+
+try:
+    from flask_migrate import Migrate
+except ImportError:
+    class Migrate:  # type: ignore[override]
+        def init_app(self, app, db):
+            return None
 
 load_dotenv()
 
@@ -115,7 +153,13 @@ def create_app():
             'https://fonts.googleapis.com',
             'https://fonts.gstatic.com',
             'https://code.jquery.com'
-        ]
+        ],
+        # Application scripts and styles are served from this application; no
+        # unsafe-inline exceptions are needed.
+        'script-src': ["'self'"],
+        'style-src': ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
+        'font-src': ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com'],
+        'img-src': ["'self'", 'data:'],
     }
     talisman.init_app(app, content_security_policy=csp)
     limiter.init_app(app)

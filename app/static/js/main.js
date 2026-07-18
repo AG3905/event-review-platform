@@ -16,14 +16,7 @@ function initializeNavigation() {
         navToggle.addEventListener('click', function() {
             navMenu.classList.toggle('active');
 
-            // Animate hamburger bars
-            const bars = navToggle.querySelectorAll('.bar');
-            bars.forEach((bar, index) => {
-                bar.style.transform = navMenu.classList.contains('active') 
-                    ? `rotate(${index === 0 ? 45 : index === 2 ? -45 : 0}deg) translate(${index === 1 ? '100px' : '0'}, ${index === 0 ? '6px' : index === 2 ? '-6px' : '0'})`
-                    : 'none';
-                bar.style.opacity = navMenu.classList.contains('active') && index === 1 ? '0' : '1';
-            });
+            navToggle.classList.toggle('active', navMenu.classList.contains('active'));
         });
 
         // Close mobile menu when clicking on links
@@ -71,8 +64,7 @@ function initializeAlerts() {
         const closeBtn = alert.querySelector('.alert-close');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
-                alert.style.opacity = '0';
-                alert.style.transform = 'translateX(100%)';
+                alert.classList.add('alert-leaving');
                 setTimeout(() => {
                     alert.remove();
                 }, 300);
@@ -82,8 +74,7 @@ function initializeAlerts() {
         // Auto-hide alerts after 5 seconds
         setTimeout(() => {
             if (alert.parentNode) {
-                alert.style.opacity = '0';
-                alert.style.transform = 'translateX(100%)';
+                alert.classList.add('alert-leaving');
                 setTimeout(() => {
                     alert.remove();
                 }, 300);
@@ -109,16 +100,14 @@ function showAlert(type, message) {
     // Add event listener to close button
     const closeBtn = alert.querySelector('.alert-close');
     closeBtn.addEventListener('click', () => {
-        alert.style.opacity = '0';
-        alert.style.transform = 'translateX(100%)';
+        alert.classList.add('alert-leaving');
         setTimeout(() => alert.remove(), 300);
     });
 
     // Auto-hide after 5 seconds
     setTimeout(() => {
         if (alert.parentNode) {
-            alert.style.opacity = '0';
-            alert.style.transform = 'translateX(100%)';
+            alert.classList.add('alert-leaving');
             setTimeout(() => alert.remove(), 300);
         }
     }, 5000);
@@ -270,15 +259,11 @@ function showPasswordStrength(field) {
     }
 
     if (value.length > 0) {
-        strengthDiv.innerHTML = `
-            <div class="strength-bar">
-                <div class="strength-fill" style="width: ${(strength / 5) * 100}%; background-color: ${color};"></div>
-            </div>
-            <span class="strength-text" style="color: ${color};">${message}</span>
-        `;
-        strengthDiv.style.display = 'block';
+        strengthDiv.innerHTML = `<div class="strength-bar"><div class="strength-fill"></div></div><span class="strength-text"></span>`;
+        strengthDiv.className = `password-strength strength-${strength}`;
+        strengthDiv.querySelector('.strength-text').textContent = message;
     } else {
-        strengthDiv.style.display = 'none';
+        strengthDiv.className = 'password-strength is-hidden';
     }
 }
 
@@ -300,8 +285,8 @@ function initializeAnimations() {
     }, observerOptions);
 
     // Observe elements for animation
-    const animatedElements = document.querySelectorAll('.feature-card, .stat-card, .event-card, .review-card');
-    animatedElements.forEach(el => observer.observe(el));
+    const animatedElements = document.querySelectorAll('.feature-card, .stat-card, .event-card, .review-card, .dashboard-section, .event-banner, .review-form-container');
+    animatedElements.forEach((el) => { el.classList.add('reveal', 'reveal-up'); observer.observe(el); });
 
     // Smooth scrolling for anchor links
     const anchorLinks = document.querySelectorAll('a[href^="#"]');
@@ -558,12 +543,54 @@ class FormAutoSave {
     }
 }
 
+function getEventStatus(scheduledAt, storedStatus) {
+    if (storedStatus === 'cancelled' || storedStatus === 'completed') {
+        return storedStatus;
+    }
+
+    const scheduledDate = new Date(scheduledAt);
+    if (Number.isNaN(scheduledDate.getTime())) {
+        return storedStatus || 'upcoming';
+    }
+
+    const now = new Date();
+    const scheduledDay = scheduledDate.toDateString();
+    const currentDay = now.toDateString();
+
+    if (now > scheduledDate && currentDay !== scheduledDay) {
+        return 'completed';
+    }
+    if (now >= scheduledDate) {
+        return 'live';
+    }
+    return 'upcoming';
+}
+
+function refreshEventStatuses() {
+    document.querySelectorAll('.js-event-status[data-scheduled-at]').forEach(statusElement => {
+        const status = getEventStatus(statusElement.dataset.scheduledAt, statusElement.dataset.storedStatus);
+
+        statusElement.classList.remove('status-upcoming', 'status-live', 'status-completed', 'status-cancelled');
+        statusElement.classList.add(`status-${status}`);
+        statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    refreshEventStatuses();
+    if (document.querySelector('.js-event-status[data-scheduled-at]')) {
+        setInterval(refreshEventStatuses, 5000);
+    }
+});
+
 // Export functions for use in other scripts
+window.showAlert = showAlert;
 window.EventReviewPlatform = {
     showAlert,
     copyToClipboard,
     StarRating,
     FormAutoSave,
+    refreshEventStatuses,
     formatDate,
     formatTime,
     debounce,

@@ -36,7 +36,7 @@
                     <div class="rating-bar">
                         <span class="rating-label">{{ rating }}★</span>
                         <div class="bar-container">
-                            <div class="bar" style="width: {% if reviews|length > 0 %}{{ (rating_distribution[rating] / reviews|length * 100)|round(1) }}%{% else %}0%{% endif %}"></div>
+                            <progress class="rating-progress" value="{{ rating_distribution[rating] }}" max="{{ reviews|length or 1 }}" aria-label="{{ rating }} star reviews"></progress>
                         </div>
                         <span class="bar-count">{{ rating_distribution[rating] }}</span>
                     </div>
@@ -124,31 +124,8 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
 
 {% block scripts %}
-<script>
-// Sort functionality
-document.getElementById('sortReviews').addEventListener('change', (e) => {
-    const sortType = e.target.value;
-    const container = document.getElementById('reviewsContainer');
-    const reviews = Array.from(container.children);
-
-    reviews.sort((a, b) => {
-        switch (sortType) {
-            case 'newest':
-                return parseFloat(b.dataset.date) - parseFloat(a.dataset.date);
-            case 'oldest':
-                return parseFloat(a.dataset.date) - parseFloat(b.dataset.date);
-            case 'highest':
-                return parseInt(b.dataset.rating) - parseInt(a.dataset.rating);
-            case 'lowest':
-                return parseInt(a.dataset.rating) - parseInt(b.dataset.rating);
-            default:
-                return 0;
-        }
-    });
-
-    reviews.forEach(review => container.appendChild(review));
-});
-</script>
+<script src="{{ url_for('static', filename='js/browse_reviews.js') }}"></script>
 {% endblock %}

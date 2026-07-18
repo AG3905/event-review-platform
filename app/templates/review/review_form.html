@@ -28,7 +28,7 @@
             <p class="form-subtitle">Your feedback helps improve future events</p>
         </div>
 
-        <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm">
+        <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm" data-event-code="{{ event.unique_code }}">
             {{ form.hidden_tag() }}
 
             <!-- Step 1: Basic Information -->
@@ -140,7 +140,7 @@
 
             <!-- Progress Bar -->
             <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+                <progress class="progress-fill" id="progressFill" value="1" max="4" aria-label="Review form progress"></progress>
                 <div class="progress-steps">
                     <div class="progress-step active" data-step="1">1</div>
                     <div class="progress-step" data-step="2">2</div>
@@ -155,182 +155,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block scripts %}
-<script>
-let currentStep = 1;
-const totalSteps = 4;
-
-// Star rating functionality
-const stars = document.querySelectorAll('.star');
-const ratingInput = document.getElementById('star_rating');
-const ratingText = document.getElementById('ratingText');
-
-const ratingMessages = {
-    1: 'Poor - Needs significant improvement',
-    2: 'Fair - Below expectations',
-    3: 'Good - Met expectations',
-    4: 'Very Good - Exceeded expectations',
-    5: 'Excellent - Outstanding experience!'
-};
-
-stars.forEach(star => {
-    star.addEventListener('mouseover', () => {
-        const rating = parseInt(star.dataset.rating);
-        highlightStars(rating);
-        ratingText.textContent = ratingMessages[rating];
-    });
-
-    star.addEventListener('click', () => {
-        const rating = parseInt(star.dataset.rating);
-        ratingInput.value = rating;
-        highlightStars(rating);
-        stars.forEach(s => s.classList.add('selected'));
-        ratingText.textContent = ratingMessages[rating];
-    });
-});
-
-document.querySelector('.star-rating').addEventListener('mouseleave', () => {
-    const currentRating = parseInt(ratingInput.value);
-    if (currentRating) {
-        highlightStars(currentRating);
-        ratingText.textContent = ratingMessages[currentRating];
-    } else {
-        highlightStars(0);
-        ratingText.textContent = 'Click a star to rate';
-    }
-});
-
-function highlightStars(rating) {
-    stars.forEach((star, index) => {
-        if (index < rating) {
-            star.classList.add('active');
-        } else {
-            star.classList.remove('active');
-        }
-    });
-}
-
-// Step navigation
-document.querySelectorAll('.next-step').forEach(btn => {
-    btn.addEventListener('click', () => {
-        if (validateCurrentStep()) {
-            nextStep();
-        }
-    });
-});
-
-document.querySelectorAll('.prev-step').forEach(btn => {
-    btn.addEventListener('click', prevStep);
-});
-
-function nextStep() {
-    if (currentStep < totalSteps) {
-        document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
-        currentStep++;
-        document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
-        updateProgress();
-    }
-}
-
-function prevStep() {
-    if (currentStep > 1) {
-        document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
-        currentStep--;
-        document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
-        updateProgress();
-    }
-}
-
-function updateProgress() {
-    const progressFill = document.getElementById('progressFill');
-    const progressSteps = document.querySelectorAll('.progress-step');
-
-    const percentage = (currentStep / totalSteps) * 100;
-    progressFill.style.width = percentage + '%';
-
-    progressSteps.forEach((step, index) => {
-        if (index < currentStep) {
-            step.classList.add('active');
-        } else {
-            step.classList.remove('active');
-        }
-    });
-}
-
-function validateCurrentStep() {
-    switch (currentStep) {
-        case 1:
-            const name = document.getElementById('reviewer_name').value.trim();
-            const email = document.getElementById('reviewerEmail').value.trim();
-            if (!name || !email) {
-                showAlert('error', 'Please fill in your name and email');
-                return false;
-            }
-            return true;
-        case 2:
-            if (!ratingInput.value) {
-                showAlert('error', 'Please select a rating');
-                return false;
-            }
-            return true;
-        default:
-            return true;
-    }
-}
-
-// Email validation
-let emailCheckTimeout;
-document.getElementById('reviewerEmail').addEventListener('input', (e) => {
-    clearTimeout(emailCheckTimeout);
-    emailCheckTimeout = setTimeout(() => {
-        checkEmail(e.target.value);
-    }, 500);
-});
-
-function checkEmail(email) {
-    if (!email) return;
-
-    fetch('/api/check-email', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            email: email,
-            unique_code: '{{ event.unique_code }}'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const messageDiv = document.getElementById('emailCheckMessage');
-        if (data.exists) {
-            messageDiv.textContent = data.message;
-            messageDiv.className = 'email-check-message error';
-        } else {
-            messageDiv.textContent = '';
-            messageDiv.className = 'email-check-message';
-        }
-    });
-}
-
-// Character count
-const reviewTextarea = document.getElementById('review_text');
-const charCount = document.getElementById('charCount');
-
-reviewTextarea.addEventListener('input', () => {
-    charCount.textContent = reviewTextarea.value.length;
-});
-
-// Form submission with loading state
-document.getElementById('reviewForm').addEventListener('submit', (e) => {
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    submitBtn.disabled = true;
-});
-
-// Initialize progress
-updateProgress();
-</script>
-{% endblock %}
+<script src="{{ url_for('static', filename='js/review_form.js') }}"></script>
 {% endblock %}

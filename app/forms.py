@@ -50,7 +50,10 @@ class EventForm(FlaskForm):
 class ReviewForm(FlaskForm):
     reviewer_name = StringField('Your Name', validators=[DataRequired(), Length(max=100)])
     reviewer_email = StringField('Email', validators=[DataRequired(), Email()])
-    star_rating = HiddenField('Rating', validators=[DataRequired()])
+    # IntegerField ensures NumberRange receives a numeric value while
+    # render_kw keeps the field out of the public form layout.
+    star_rating = IntegerField('Rating', validators=[DataRequired(), NumberRange(min=1, max=5)],
+                               render_kw={'type': 'hidden'})
     review_text = TextAreaField('Your Review', validators=[Optional()], 
                                render_kw={"placeholder": "Tell us about your experience..."})
     attendee_type = SelectField('I am a...', 

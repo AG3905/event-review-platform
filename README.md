@@ -4,6 +4,10 @@ A comprehensive web-based platform for event organizers to collect and manage au
 
 ## Features
 
+### Authenticated roles
+- **Platform Admin**: Global console for all organizers, events, and reviews.
+- **Organizer**: Private, tenant-isolated event and feedback workspace.
+
 ### For Event Organizers
 - **User Authentication**: Secure registration and login system
 - **Event Management**: Create, edit, and manage events with detailed information
@@ -13,7 +17,7 @@ A comprehensive web-based platform for event organizers to collect and manage au
 - **Data Export**: Export review data to CSV files
 - **Review Moderation**: Approve, feature, and manage individual reviews
 
-### For Attendees
+### For Public Reviewers (no account)
 - **Easy Access**: Scan QR codes or use direct links to access review forms
 - **Multi-step Review Process**: Intuitive step-by-step review submission
 - **Star Ratings**: Interactive 5-star rating system
@@ -24,7 +28,7 @@ A comprehensive web-based platform for event organizers to collect and manage au
 ## Technology Stack
 
 - **Backend**: Flask (Python web framework)
-- **Database**: SQLite with SQLAlchemy ORM
+- **Database**: PostgreSQL/Supabase in production, SQLite for local development
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Authentication**: Flask-Login with secure password hashing
 - **Forms**: Flask-WTF with CSRF protection
@@ -50,8 +54,9 @@ A comprehensive web-based platform for event organizers to collect and manage au
    pip install -r requirements.txt
    ```
 
-4. **Run the application**
+4. **Apply the database migration and run the application**
    ```bash
+   flask db upgrade
    python run.py
    ```
 
@@ -62,7 +67,7 @@ A comprehensive web-based platform for event organizers to collect and manage au
 
 ### Getting Started
 
-1. **Register an account** as an event organizer
+1. **Register an account** as an event organizer. Public reviewers never register or log in.
 2. **Create your first event** with all relevant details
 3. **Generate and share** the QR code or review link with attendees
 4. **Monitor reviews** through your dashboard
@@ -131,7 +136,7 @@ Render requires explicit Build and Start commands and exposes the `PORT` environ
 
 Recommended Render settings:
 
-- Build Command (runs once during deploy):
+- Build Command (runs once during deploy; this repository also applies migrations in `build.sh`):
 
    ```bash
    pip install -r requirements.txt
@@ -143,17 +148,12 @@ Recommended Render settings:
    gunicorn "app:create_app()" -w 4 -b 0.0.0.0:$PORT
    ```
 
-- Release Command (run once after deploy to apply database migrations):
-
-   ```bash
-   flask db upgrade
-   ```
-
 Environment variables to add in the Render Dashboard (minimum):
 
 - `SECRET_KEY` — strong secret used for sessions and CSRF (required)
 - `DATABASE_URL` — e.g. `postgresql://user:pass@host:5432/dbname`
 - `FLASK_DEBUG=false`
+- `PLATFORM_ADMIN_EMAIL` — email of the account to promote to Platform Admin
 
 Optional / recommended:
 

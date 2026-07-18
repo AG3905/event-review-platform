@@ -1,0 +1,2 @@
+{% extends "base.html" %}
+{% block content %}<div class="dashboard-container"><div class="section-header"><h1 class="section-title">All Events</h1></div><div class="events-grid">{% for event in events %}<article class="event-card"><h2 class="event-title">{{ event.title }}</h2><p>{{ event.organizer.organization or event.organizer.username }}</p><p>{{ event.event_date.strftime('%B %d, %Y') }} · {{ event.get_review_count() }} reviews</p></article>{% else %}<div class="empty-state">No events yet.</div>{% endfor %}</div></div>{% endblock %}
