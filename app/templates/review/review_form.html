@@ -31,6 +31,13 @@
         <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm" data-event-code="{{ event.unique_code }}">
             {{ form.hidden_tag() }}
 
+            <!-- Honeypot Field for Bot Mitigation -->
+            <div class="hp-field" style="position: absolute; left: -9999px; opacity: 0; pointer-events: none; height: 0; width: 0; overflow: hidden;" aria-hidden="true">
+                {{ form.website.label }}
+                {{ form.website(tabindex="-1", autocomplete="off") }}
+            </div>
+
+
             <!-- Step 1: Basic Information -->
             <div class="form-step active" data-step="1">
                 <h3 class="step-title">Your Information</h3>

@@ -28,7 +28,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                <p class="rating-text">{{ reviews|length }} review{{ 's' if reviews|length != 1 else '' }}</p>
+                <p class="rating-text">{{ reviews.total }} review{{ 's' if reviews.total != 1 else '' }}</p>
             </div>
 
             <div class="rating-breakdown">
@@ -36,7 +36,7 @@
                     <div class="rating-bar">
                         <span class="rating-label">{{ rating }}★</span>
                         <div class="bar-container">
-                            <progress class="rating-progress" value="{{ rating_distribution[rating] }}" max="{{ reviews|length or 1 }}" aria-label="{{ rating }} star reviews"></progress>
+                            <progress class="rating-progress" value="{{ rating_distribution[rating] }}" max="{{ reviews.total or 1 }}" aria-label="{{ rating }} star reviews"></progress>
                         </div>
                         <span class="bar-count">{{ rating_distribution[rating] }}</span>
                     </div>
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    {% if reviews %}
+    {% if reviews.items %}
         <div class="reviews-list">
             <div class="reviews-header">
                 <h2 class="reviews-title">All Reviews</h2>
@@ -60,7 +60,7 @@
             </div>
 
             <div class="reviews-container" id="reviewsContainer">
-                {% for review in reviews %}
+                {% for review in reviews.items %}
                     <div class="review-card" data-rating="{{ review.star_rating }}" data-date="{{ review.submitted_at.timestamp() }}">
                         <div class="review-header">
                             <div class="reviewer-info">
@@ -102,6 +102,22 @@
                     </div>
                 {% endfor %}
             </div>
+
+            {% if reviews.has_prev or reviews.has_next %}
+            <nav class="pagination" aria-label="Pagination">
+                {% if reviews.has_prev %}
+                <a href="{{ url_for(request.endpoint, unique_code=event.unique_code, page=reviews.prev_num) }}" class="btn btn-small btn-secondary">&laquo; Previous</a>
+                {% else %}
+                <span class="btn btn-small btn-secondary disabled">&laquo; Previous</span>
+                {% endif %}
+                <span class="pagination-info">Page {{ reviews.page }} of {{ reviews.pages or 1 }}</span>
+                {% if reviews.has_next %}
+                <a href="{{ url_for(request.endpoint, unique_code=event.unique_code, page=reviews.next_num) }}" class="btn btn-small btn-secondary">Next &raquo;</a>
+                {% else %}
+                <span class="btn btn-small btn-secondary disabled">Next &raquo;</span>
+                {% endif %}
+            </nav>
+            {% endif %}
         </div>
     {% else %}
         <div class="empty-state">

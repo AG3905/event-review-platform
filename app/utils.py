@@ -1,12 +1,15 @@
+import io
 import qrcode
 from PIL import Image
 import os
 import csv
-from io import StringIO
 from datetime import datetime
 
-def generate_qr_code(url, filename):
-    """Generate QR code for event review URL"""
+PER_PAGE = 25
+
+
+def generate_qr_code(url, filename=None):
+    """Generate QR code for event review URL in memory (BytesIO)"""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -16,63 +19,65 @@ def generate_qr_code(url, filename):
     qr.add_data(url)
     qr.make(fit=True)
 
-    # Create QR code image
     img = qr.make_image(fill_color="black", back_color="white")
 
-    # Storage path can be overridden in production via FILE_STORAGE_PATH
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+
+    # Storage path can be optionally enabled in production via FILE_STORAGE_PATH
     storage_base = os.environ.get('FILE_STORAGE_PATH')
-    if storage_base:
+    if storage_base and filename:
         qr_dir = os.path.join(storage_base, 'qr_codes')
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        qr_dir = os.path.join(base_dir, 'static', 'qr_codes')
-    os.makedirs(qr_dir, exist_ok=True)
+        os.makedirs(qr_dir, exist_ok=True)
+        img.save(os.path.join(qr_dir, f'{filename}.png'))
 
-    qr_path = os.path.join(qr_dir, f'{filename}.png')
-    img.save(qr_path)
+    return buf
 
-    return qr_path
 
 def export_reviews_csv(event):
-    """Export event reviews to CSV file"""
-    # Storage path can be overridden in production via FILE_STORAGE_PATH
+    """Export event reviews to an in-memory BytesIO CSV buffer"""
+    string_io = io.StringIO()
+
+    fieldnames = [
+        'Review ID', 'Reviewer Name', 'Reviewer Email', 'Star Rating',
+        'Review Text', 'Categories', 'Attendee Type', 'Would Recommend',
+        'Submitted At', 'Is Approved', 'Is Featured', 'Quality Score'
+    ]
+    writer = csv.DictWriter(string_io, fieldnames=fieldnames)
+    writer.writeheader()
+
+    for review in event.reviews:
+        writer.writerow({
+            'Review ID': review.id,
+            'Reviewer Name': review.reviewer_name,
+            'Reviewer Email': review.reviewer_email,
+            'Star Rating': review.star_rating,
+            'Review Text': review.review_text or '',
+            'Categories': ', '.join(review.get_categories()),
+            'Attendee Type': review.attendee_type or '',
+            'Would Recommend': 'Yes' if review.would_recommend else 'No',
+            'Submitted At': review.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'Is Approved': 'Yes' if review.is_approved else 'No',
+            'Is Featured': 'Yes' if review.is_featured else 'No',
+            'Quality Score': review.get_quality_score()
+        })
+
+    csv_bytes = string_io.getvalue().encode('utf-8')
+    buf = io.BytesIO(csv_bytes)
+
+    # Storage path can be optionally enabled in production via FILE_STORAGE_PATH
     storage_base = os.environ.get('FILE_STORAGE_PATH')
     if storage_base:
         csv_dir = os.path.join(storage_base, 'exports')
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        csv_dir = os.path.join(base_dir, 'static', 'exports')
-    os.makedirs(csv_dir, exist_ok=True)
+        os.makedirs(csv_dir, exist_ok=True)
+        filename = f'reviews_{event.unique_code}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        with open(os.path.join(csv_dir, filename), 'wb') as f:
+            f.write(csv_bytes)
 
-    filename = f'reviews_{event.unique_code}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    csv_path = os.path.join(csv_dir, filename)
+    return buf
 
-    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = [
-            'Review ID', 'Reviewer Name', 'Reviewer Email', 'Star Rating',
-            'Review Text', 'Categories', 'Attendee Type', 'Would Recommend',
-            'Submitted At', 'Is Approved', 'Is Featured', 'Quality Score'
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-        writer.writeheader()
-        for review in event.reviews:
-            writer.writerow({
-                'Review ID': review.id,
-                'Reviewer Name': review.reviewer_name,
-                'Reviewer Email': review.reviewer_email,
-                'Star Rating': review.star_rating,
-                'Review Text': review.review_text or '',
-                'Categories': ', '.join(review.get_categories()),
-                'Attendee Type': review.attendee_type or '',
-                'Would Recommend': 'Yes' if review.would_recommend else 'No',
-                'Submitted At': review.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'Is Approved': 'Yes' if review.is_approved else 'No',
-                'Is Featured': 'Yes' if review.is_featured else 'No',
-                'Quality Score': review.get_quality_score()
-            })
-
-    return csv_path
 
 def calculate_word_frequency(reviews):
     """Calculate word frequency from review texts"""

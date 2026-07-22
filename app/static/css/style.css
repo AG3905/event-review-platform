@@ -1758,3 +1758,26 @@ h6 { font-size: 1rem; }
 .p-4 { padding: 1.5rem; }
 .hidden { display: none; }
 .visible { display: block; }
+
+/* Pagination Controls */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.pagination-info {
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.875rem;
+}
+
+.btn.disabled,
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+

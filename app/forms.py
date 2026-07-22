@@ -72,7 +72,13 @@ class ReviewForm(FlaskForm):
     well_organized = BooleanField('Well Organized')
     would_recommend = BooleanField('Would Recommend')
 
+    # Honeypot field for bot mitigation (invisible off-screen field)
+    website = StringField('Website', validators=[Optional()])
+
     submit = SubmitField('Submit Review')
+
+
+
 
 class EditEventForm(FlaskForm):
     title = StringField('Event Title', validators=[DataRequired(), Length(max=200)])
@@ -121,3 +127,15 @@ class ChangePasswordForm(FlaskForm):
     def validate_old_password(self, field):
         if not current_user.check_password(field.data):
             raise ValidationError('Current password is incorrect.')
+
+
+class ForgotPasswordForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
+
+
+class ResetPasswordForm(FlaskForm):
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
+    new_password2 = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password')])
+    submit = SubmitField('Reset Password')
+

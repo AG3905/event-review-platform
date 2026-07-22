@@ -21,6 +21,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 
+from flask_mail import Mail
+
 try:
     from flask_talisman import Talisman
 except ImportError:
@@ -57,6 +59,8 @@ csrf = CSRFProtect()
 migrate = Migrate()
 talisman = Talisman()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
+mail = Mail()
+
 
 def create_app():
     app = Flask(__name__)
@@ -85,6 +89,8 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
+    app.config['TURNSTILE_SITE_KEY'] = os.environ.get('TURNSTILE_SITE_KEY')
+
 
     # SQLAlchemy engine tuning for production (pool options only for non-SQLite)
     if not database_url.startswith('sqlite'):
@@ -138,11 +144,24 @@ def create_app():
         except Exception:
             app.logger.exception('Failed to initialize Sentry')
 
+    # Mail configuration
+    app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ('true', '1', 't')
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@eventreview.com')
+
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+    if app.config['MAIL_SERVER']:
+        mail.init_app(app)
+    else:
+        app.logger.warning("MAIL_SERVER is not set; email sending will be logged instead.")
+
     
     # Configure security headers
     csp = {

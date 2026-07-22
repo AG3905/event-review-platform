@@ -2,12 +2,16 @@ from flask import render_template, redirect, url_for, flash, request, jsonify, s
 from flask_login import login_required, current_user
 from app.main import bp
 from app.models import User, Event, Review, db
+from app import limiter
+
 from app.forms import EventForm, ReviewForm, EditEventForm
-from app.utils import generate_qr_code, export_reviews_csv
+from app.utils import generate_qr_code, export_reviews_csv, PER_PAGE
+
 from datetime import datetime, date
 from sqlalchemy import func
 import os
 from app.decorators import admin_required, organizer_required
+
 
 
 def _owned_event_or_404(event_id):
@@ -129,20 +133,21 @@ def delete_event(event_id):
 def event_qr_code(event_id):
     event = _owned_event_or_404(event_id)
 
-    # Generate QR code
+    # Generate QR code in memory
     review_url = request.url_root.rstrip('/') + event.get_review_url()
-    qr_path = generate_qr_code(review_url, event.unique_code)
+    qr_buf = generate_qr_code(review_url, event.unique_code)
 
-    return send_file(qr_path, as_attachment=True, download_name=f'{event.title}_QR.png')
+    return send_file(qr_buf, mimetype='image/png', as_attachment=True, download_name=f'{event.title}_QR.png')
 
 @bp.route('/event/<int:event_id>/export')
 @organizer_required
 def export_event_reviews(event_id):
     event = _owned_event_or_404(event_id)
 
-    # Export reviews to CSV
-    csv_path = export_reviews_csv(event)
-    return send_file(csv_path, as_attachment=True, download_name=f'{event.title}_reviews.csv')
+    # Export reviews to CSV in memory
+    csv_buf = export_reviews_csv(event)
+    return send_file(csv_buf, mimetype='text/csv', as_attachment=True, download_name=f'{event.title}_reviews.csv')
+
 
 @bp.route('/review/<string:unique_code>')
 def review_form(unique_code):
@@ -156,7 +161,10 @@ def review_form(unique_code):
                          event=event, form=form)
 
 @bp.route('/review/<string:unique_code>/submit', methods=['POST'])
+@limiter.limit("10 per hour")
 def submit_review(unique_code):
+
+
     event = Event.query.filter_by(unique_code=unique_code).first_or_404()
 
     if not event.allow_reviews:
@@ -165,7 +173,12 @@ def submit_review(unique_code):
 
     form = ReviewForm()
     if form.validate_on_submit():
+        # Honeypot bot mitigation check
+        if form.website.data:
+            return redirect(url_for('main.review_success', unique_code=unique_code))
+
         # Check if user already reviewed this event
+
         existing_review = Review.query.filter_by(
             event_id=event.id,
             reviewer_email=form.reviewer_email.data
@@ -224,9 +237,10 @@ def review_success(unique_code):
 def browse_reviews(unique_code):
     event = Event.query.filter_by(unique_code=unique_code).first_or_404()
 
-    # Get all approved reviews
+    page = request.args.get('page', 1, type=int)
     reviews = Review.query.filter_by(event_id=event.id, is_approved=True)\
-                    .order_by(Review.submitted_at.desc()).all()
+                    .order_by(Review.submitted_at.desc())\
+                    .paginate(page=page, per_page=PER_PAGE, error_out=False)
 
     avg_rating = event.get_average_rating()
     rating_distribution = event.get_rating_distribution()
@@ -251,21 +265,27 @@ def admin_dashboard():
 @bp.route('/admin/organizers')
 @admin_required
 def admin_organizers():
-    organizers = User.query.filter_by(role='organizer').order_by(User.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    organizers = User.query.filter_by(role='organizer').order_by(User.created_at.desc())\
+        .paginate(page=page, per_page=PER_PAGE, error_out=False)
     return render_template('admin/organizers.html', title='Organizers', organizers=organizers)
 
 
 @bp.route('/admin/events')
 @admin_required
 def admin_events():
-    events = Event.query.order_by(Event.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    events = Event.query.order_by(Event.created_at.desc())\
+        .paginate(page=page, per_page=PER_PAGE, error_out=False)
     return render_template('admin/events.html', title='All Events', events=events)
 
 
 @bp.route('/admin/reviews')
 @admin_required
 def admin_reviews():
-    reviews = Review.query.order_by(Review.submitted_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    reviews = Review.query.order_by(Review.submitted_at.desc())\
+        .paginate(page=page, per_page=PER_PAGE, error_out=False)
     return render_template('admin/reviews.html', title='All Reviews', reviews=reviews)
 
 
@@ -286,9 +306,12 @@ def admin_analytics():
 @bp.route('/reviews')
 @organizer_required
 def organizer_reviews():
+    page = request.args.get('page', 1, type=int)
     reviews = Review.query.join(Event).filter(Event.user_id == current_user.id)\
-        .order_by(Review.submitted_at.desc()).all()
+        .order_by(Review.submitted_at.desc())\
+        .paginate(page=page, per_page=PER_PAGE, error_out=False)
     return render_template('dashboard/reviews.html', title='My Reviews', reviews=reviews)
+
 
 
 @bp.route('/analytics')

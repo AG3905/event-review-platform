@@ -28,11 +28,7 @@ jobs:
       run: |
         python -m compileall app
 
-    - name: Run tests if present
+    - name: Run tests
       run: |
-        if [ -d tests ] || [ -f pytest.ini ]; then
-          python -m pip install pytest
-          pytest -q
-        else
-          echo "No tests found, skipping"
-        fi
+        pytest -q --cov=app
+

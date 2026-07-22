@@ -9,7 +9,8 @@ A comprehensive web-based platform for event organizers to collect and manage au
 - **Organizer**: Private, tenant-isolated event and feedback workspace.
 
 ### For Event Organizers
-- **User Authentication**: Secure registration and login system
+- **User Authentication**: Secure registration, login, and password reset flow via time-limited signed tokens
+
 - **Event Management**: Create, edit, and manage events with detailed information
 - **QR Code Generation**: Automatically generate QR codes for easy review access
 - **Review Dashboard**: View and manage all reviews with filtering and sorting
@@ -159,7 +160,8 @@ Optional / recommended:
 
 - `RATELIMIT_STORAGE_URL` — e.g. `redis://:<password>@redis-host:6379/0` if you use rate limiting
 - `SENTRY_DSN` — to enable error reporting in Sentry (optional)
-- `FILE_STORAGE_PATH` — path to a mounted persistent disk if you want to persist generated files
+- `FILE_STORAGE_PATH` — optional path to persistent storage if archival of generated QR/CSV files on disk is desired (QR codes and CSV exports are generated in-memory by default)
+
 
 Health check:
 
@@ -178,7 +180,8 @@ Notes:
 - **Input Validation**: Comprehensive server-side validation
 - **Session Security**: Secure session management
 - **SQL Injection Prevention**: SQLAlchemy ORM prevents SQL injection
-- **Rate Limiting**: Basic IP-based rate limiting for review submissions
+- **Rate Limiting**: Advanced IP-based rate limiting with global limits (200 per day, 50 per hour) and strict route-specific limits on authentication (`5 per minute; 20 per hour` on `/auth/login`) and public review submissions (`10 per hour` on `/review/<code animate>/submit`).
+
 
 ## Browser Support
 

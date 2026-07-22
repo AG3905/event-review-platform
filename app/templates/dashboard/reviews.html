@@ -1,11 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="dashboard-container">
-    <div class="section-header"><h1 class="section-title">My Reviews</h1><a class="btn btn-secondary" href="{{ url_for('main.organizer_analytics') }}">View Analytics</a></div>
-    <div class="reviews-container">
-        {% for review in reviews %}
-        <article class="review-card"><div class="review-header"><strong>{{ review.reviewer_name }}</strong><span>{{ review.event.title }} · {{ review.star_rating }}/5</span></div>{% if review.review_text %}<p class="review-text">{{ review.review_text }}</p>{% endif %}</article>
-        {% else %}<div class="empty-state">No reviews yet.</div>{% endfor %}
+    <div class="section-header">
+        <h1 class="section-title">My Reviews</h1>
+        <a class="btn btn-secondary" href="{{ url_for('main.organizer_analytics') }}">View Analytics</a>
     </div>
+    <div class="reviews-container">
+        {% for review in reviews.items %}
+        <article class="review-card">
+            <div class="review-header">
+                <strong>{{ review.reviewer_name }}</strong>
+                <span>{{ review.event.title }} · {{ review.star_rating }}/5</span>
+            </div>
+            {% if review.review_text %}
+            <p class="review-text">{{ review.review_text }}</p>
+            {% endif %}
+        </article>
+        {% else %}
+        <div class="empty-state">No reviews yet.</div>
+        {% endfor %}
+    </div>
+    {% if reviews.has_prev or reviews.has_next %}
+    <nav class="pagination" aria-label="Pagination">
+        {% if reviews.has_prev %}
+        <a href="{{ url_for(request.endpoint, page=reviews.prev_num, **request.view_args) }}" class="btn btn-small btn-secondary">&laquo; Previous</a>
+        {% else %}
+        <span class="btn btn-small btn-secondary disabled">&laquo; Previous</span>
+        {% endif %}
+        <span class="pagination-info">Page {{ reviews.page }} of {{ reviews.pages or 1 }}</span>
+        {% if reviews.has_next %}
+        <a href="{{ url_for(request.endpoint, page=reviews.next_num, **request.view_args) }}" class="btn btn-small btn-secondary">Next &raquo;</a>
+        {% else %}
+        <span class="btn btn-small btn-secondary disabled">Next &raquo;</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

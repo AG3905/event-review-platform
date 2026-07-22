@@ -1,13 +1,14 @@
 {
   "pythonVersion": "3.11",
   "venvPath": ".",
-  "venv": ".venv",
+  "venv": "venv",
   "include": [
     "."
   ],
   "exclude": [
-    "venv",
+    ".venv",
     ".git",
     "__pycache__"
   ]
 }
+
