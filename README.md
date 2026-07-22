@@ -205,7 +205,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Support
 
-For support, please contact [your-email@example.com] or create an issue in the repository.
+For support, please contact ganganiayush2@gmail.com or create an issue in the repository.
 
 ## Roadmap
 
