@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
 
     # Relationships
     events = db.relationship('Event', backref='organizer', lazy=True, cascade='all, delete-orphan')
+    saved_question_sets = db.relationship('SavedQuestionSet', backref='organizer', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -68,6 +69,7 @@ class Event(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50), nullable=False)
+    is_custom_category = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text)
     venue = db.Column(db.String(200))
     event_date = db.Column(db.Date, nullable=False)
@@ -76,11 +78,13 @@ class Event(db.Model):
     status = db.Column(db.String(20), default='upcoming')
     unique_code = db.Column(db.String(10), unique=True, nullable=False)
     allow_reviews = db.Column(db.Boolean, default=True)
+    allow_location_questions = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     reviews = db.relationship('Review', backref='event', lazy=True, cascade='all, delete-orphan')
+    questions = db.relationship('EventQuestion', backref='event', lazy=True, cascade='all, delete-orphan', order_by='EventQuestion.display_order')
 
     def __init__(self, **kwargs):
         super(Event, self).__init__(**kwargs)
@@ -152,6 +156,8 @@ class Review(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
     reviewer_name = db.Column(db.String(100), nullable=False)
     reviewer_email = db.Column(db.String(100), nullable=False)
+    reviewer_town = db.Column(db.String(100))
+    reviewer_state = db.Column(db.String(100))
     star_rating = db.Column(db.Integer, nullable=False)
     review_text = db.Column(db.Text)
     review_categories = db.Column(db.Text)  # JSON string
@@ -163,6 +169,9 @@ class Review(db.Model):
     is_approved = db.Column(db.Boolean, default=True)
     is_featured = db.Column(db.Boolean, default=False)
     helpful_votes = db.Column(db.Integer, default=0)
+
+    # Relationships
+    answers = db.relationship('ReviewAnswer', backref='review', lazy=True, cascade='all, delete-orphan')
 
     __table_args__ = (db.UniqueConstraint('event_id', 'reviewer_email', name='_event_reviewer_email_uc'),)
 
@@ -187,3 +196,46 @@ class Review(db.Model):
         if self.would_recommend:
             score += 20
         return min(score, 100)
+
+class EventQuestion(db.Model):
+    __tablename__ = 'event_questions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False, index=True)
+    question_text = db.Column(db.String(300), nullable=False)
+    question_type = db.Column(db.String(20), nullable=False)  # 'rating' | 'single_choice' | 'multi_choice' | 'text' | 'yes_no'
+    options = db.Column(db.Text)  # JSON list, only used for single_choice/multi_choice
+    is_required = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    answers = db.relationship('ReviewAnswer', backref='question', lazy=True, cascade='all, delete-orphan')
+
+    def get_options(self):
+        return json.loads(self.options) if self.options else []
+
+    def set_options(self, options_list):
+        self.options = json.dumps(options_list)
+
+class ReviewAnswer(db.Model):
+    __tablename__ = 'review_answers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('event_questions.id'), nullable=False)
+    answer_text = db.Column(db.Text)  # store all answer types as text
+
+class SavedQuestionSet(db.Model):
+    __tablename__ = 'saved_question_sets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organizer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    questions = db.Column(db.Text)  # JSON list of question dicts
+
+    def get_questions(self):
+        return json.loads(self.questions) if self.questions else []
+
+    def set_questions(self, questions_list):
+        self.questions = json.dumps(questions_list)
+

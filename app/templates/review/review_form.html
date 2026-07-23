@@ -1,165 +1,232 @@
 {% extends "review/public_layout.html" %}
 
 {% block content %}
-<div class="review-container">
-    <div class="event-banner">
-        <div class="event-info">
-            <h1 class="event-title">{{ event.title }}</h1>
-            <div class="event-meta">
-                <span class="event-category">{{ event.category }}</span>
-                <span class="event-date">
-                    <i class="fas fa-calendar"></i>
-                    {{ event.event_date.strftime('%B %d, %Y') }}
-                </span>
-                <span class="event-venue">
-                    <i class="fas fa-map-marker-alt"></i>
-                    {{ event.venue }}
-                </span>
-            </div>
-            {% if event.description %}
-                <p class="event-description">{{ event.description }}</p>
-            {% endif %}
+<div class="review-wizard-container max-w-760 mx-auto px-2 py-3">
+
+    <!-- Fixed Progress Bar Header -->
+    <div class="review-wizard-progress border rounded p-3 mb-4 bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold text-dark small" id="step-indicator-text">Step 1 of 4: Rating</span>
+            <span class="fw-bold text-primary small" id="step-percentage-text">25%</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-primary" id="wizardProgressBar" role="progressbar" style="width: 25%; transition: width 0.3s ease;"></div>
         </div>
     </div>
 
-    <div class="review-form-container">
-        <div class="form-header">
-            <h2 class="form-title">Share Your Experience</h2>
-            <p class="form-subtitle">Your feedback helps improve future events</p>
+    <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm" data-event-code="{{ event.unique_code }}">
+        {{ form.hidden_tag() }}
+
+        <!-- Honeypot Field for Bot Mitigation -->
+        <div class="hp-field" style="position: absolute; left: -9999px; opacity: 0; pointer-events: none; height: 0; width: 0; overflow: hidden;" aria-hidden="true">
+            {{ form.website.label }}
+            {{ form.website(tabindex="-1", autocomplete="off") }}
         </div>
 
-        <form method="POST" action="{{ url_for('main.submit_review', unique_code=event.unique_code) }}" class="review-form" id="reviewForm" data-event-code="{{ event.unique_code }}">
-            {{ form.hidden_tag() }}
-
-            <!-- Honeypot Field for Bot Mitigation -->
-            <div class="hp-field" style="position: absolute; left: -9999px; opacity: 0; pointer-events: none; height: 0; width: 0; overflow: hidden;" aria-hidden="true">
-                {{ form.website.label }}
-                {{ form.website(tabindex="-1", autocomplete="off") }}
+        <!-- STEP 1: WELCOME & RATING -->
+        <div class="wizard-step active-step card p-4 mb-4 shadow-sm" data-step="1">
+            <div class="event-header-card mb-4 pb-3 border-bottom text-center">
+                <span class="badge bg-primary text-wrap mb-2 px-3 py-2 fs-6">{{ event.category }}</span>
+                <h1 class="h3 fw-bold text-dark mb-2">{{ event.title }}</h1>
+                <div class="text-muted small d-flex justify-content-center flex-wrap gap-3 mb-2">
+                    <span><i class="fas fa-calendar me-1"></i> {{ event.event_date.strftime('%B %d, %Y') }}</span>
+                    {% if event.venue %}
+                    <span><i class="fas fa-map-marker-alt me-1"></i> {{ event.venue }}</span>
+                    {% endif %}
+                </div>
+                {% if event.description %}
+                    <p class="text-secondary small mt-2 mb-0">{{ event.description }}</p>
+                {% endif %}
             </div>
 
+            <div class="rating-step-content text-center py-3">
+                <h3 class="h5 fw-bold mb-1">Overall Rating <span class="text-danger">*</span></h3>
+                <p class="text-muted small mb-3">How was your overall experience?</p>
 
-            <!-- Step 1: Basic Information -->
-            <div class="form-step active" data-step="1">
-                <h3 class="step-title">Your Information</h3>
+                <div class="star-rating-widget d-flex justify-content-center gap-2 fs-1 mb-2 text-warning cursor-pointer" id="starRating">
+                    <span class="star" data-rating="1">★</span>
+                    <span class="star" data-rating="2">★</span>
+                    <span class="star" data-rating="3">★</span>
+                    <span class="star" data-rating="4">★</span>
+                    <span class="star" data-rating="5">★</span>
+                </div>
+                <div class="rating-text-label text-muted small fw-bold mb-3" id="ratingText">Tap a star to rate</div>
+                {{ form.star_rating }}
 
-                <div class="form-row">
-                    <div class="form-group">
-                        {{ form.reviewer_name.label(class="form-label") }}
-                        {{ form.reviewer_name(class="form-input") }}
-                        {% for error in form.reviewer_name.errors %}
-                            <div class="form-error">{{ error }}</div>
-                        {% endfor %}
+                <div class="mt-4 pt-3 border-top">
+                    <label class="form-label fw-bold small">Would you recommend this event to others?</label>
+                    <div class="d-flex justify-content-center gap-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="would_recommend" id="rec_yes" value="y" {% if form.would_recommend.data %}checked{% endif %}>
+                            <label class="form-check-label" for="rec_yes">Yes</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="would_recommend" id="rec_no" value="n" {% if form.would_recommend.data == False %}checked{% endif %}>
+                            <label class="form-check-label" for="rec_no">No</label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        {{ form.reviewer_email.label(class="form-label") }}
-                        {{ form.reviewer_email(class="form-input", id="reviewerEmail") }}
-                        {% for error in form.reviewer_email.errors %}
-                            <div class="form-error">{{ error }}</div>
-                        {% endfor %}
-                        <div class="email-check-message" id="emailCheckMessage"></div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    {{ form.attendee_type.label(class="form-label") }}
-                    {{ form.attendee_type(class="form-select") }}
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" class="btn btn-primary next-step">Next Step</button>
-                </div>
-            </div>
-
-            <!-- Step 2: Rating -->
-            <div class="form-step" data-step="2">
-                <h3 class="step-title">Rate Your Experience</h3>
-
-                <div class="rating-container">
-                    <div class="star-rating" id="starRating">
-                        <span class="star" data-rating="1">★</span>
-                        <span class="star" data-rating="2">★</span>
-                        <span class="star" data-rating="3">★</span>
-                        <span class="star" data-rating="4">★</span>
-                        <span class="star" data-rating="5">★</span>
-                    </div>
-                    <div class="rating-text" id="ratingText">Click a star to rate</div>
-                    {{ form.star_rating }}
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
-                    <button type="button" class="btn btn-primary next-step">Next Step</button>
                 </div>
             </div>
 
-            <!-- Step 3: Categories -->
-            <div class="form-step" data-step="3">
-                <h3 class="step-title">What stood out?</h3>
-                <p class="step-subtitle">Select all that apply</p>
-
-                <div class="checkbox-grid">
-                    <div class="checkbox-item">
-                        {{ form.great_sound() }}
-                        {{ form.great_sound.label() }}
-                    </div>
-                    <div class="checkbox-item">
-                        {{ form.good_venue() }}
-                        {{ form.good_venue.label() }}
-                    </div>
-                    <div class="checkbox-item">
-                        {{ form.worth_price() }}
-                        {{ form.worth_price.label() }}
-                    </div>
-                    <div class="checkbox-item">
-                        {{ form.well_organized() }}
-                        {{ form.well_organized.label() }}
-                    </div>
-                    <div class="checkbox-item">
-                        {{ form.would_recommend() }}
-                        {{ form.would_recommend.label() }}
-                    </div>
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
-                    <button type="button" class="btn btn-primary next-step">Next Step</button>
-                </div>
+            <div class="step-nav-buttons d-flex justify-content-end mt-4">
+                <button type="button" class="btn btn-primary btn-lg next-step-btn px-4">Next: Feedback &rarr;</button>
             </div>
-
-            <!-- Step 4: Written Review -->
-            <div class="form-step" data-step="4">
-                <h3 class="step-title">Tell us more (Optional)</h3>
-                <p class="step-subtitle">Share your detailed thoughts</p>
-
-                <div class="form-group">
-                    {{ form.review_text(class="form-textarea", rows="6", placeholder="What did you enjoy most? Any suggestions for improvement?") }}
-                    <div class="character-count">
-                        <span id="charCount">0</span> characters
-                    </div>
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" class="btn btn-secondary prev-step">Previous</button>
-                    {{ form.submit(class="btn btn-primary btn-large", id="submitBtn") }}
-                </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="progress-bar">
-                <progress class="progress-fill" id="progressFill" value="1" max="4" aria-label="Review form progress"></progress>
-                <div class="progress-steps">
-                    <div class="progress-step active" data-step="1">1</div>
-                    <div class="progress-step" data-step="2">2</div>
-                    <div class="progress-step" data-step="3">3</div>
-                    <div class="progress-step" data-step="4">4</div>
-                </div>
-            </div>
-        </form>
-
-        <div class="form-footer">
-            <p>Already reviewed this event? <a href="{{ url_for('main.browse_reviews', unique_code=event.unique_code) }}">Browse other reviews</a></p>
         </div>
+
+        <!-- STEP 2: DYNAMIC FEEDBACK QUESTIONS -->
+        <div class="wizard-step card p-4 mb-4 shadow-sm" data-step="2" style="display: none;">
+            <h3 class="h5 fw-bold mb-1 border-bottom pb-2">Your Detailed Feedback</h3>
+            <p class="text-muted small mb-4">Please answer the questions below to help the organizer improve.</p>
+
+            {% if questions %}
+                <div class="dynamic-questions-list">
+                    {% for q in questions %}
+                        <div class="dynamic-question-item mb-4 p-3 bg-light rounded border">
+                            <label class="form-label fw-bold d-block mb-2">
+                                {{ loop.index }}. {{ q.question_text }}
+                                {% if q.is_required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+
+                            {% if q.question_type == 'rating' %}
+                                <div class="q-star-rating d-flex gap-2 text-warning fs-3" data-q-id="{{ q.id }}">
+                                    {% for r in range(1, 6) %}
+                                        <span class="q-star cursor-pointer" data-val="{{ r }}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="question_{{ q.id }}" id="q_val_{{ q.id }}" class="q-input-field {% if q.is_required %}required-q{% endif %}" data-q-text="{{ q.question_text }}">
+
+                            {% elif q.question_type == 'yes_no' %}
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check q-input-field {% if q.is_required %}required-q{% endif %}" name="question_{{ q.id }}" id="q_{{ q.id }}_yes" value="Yes" autocomplete="off" data-q-text="{{ q.question_text }}">
+                                    <label class="btn btn-outline-success px-4" for="q_{{ q.id }}_yes">Yes</label>
+
+                                    <input type="radio" class="btn-check q-input-field {% if q.is_required %}required-q{% endif %}" name="question_{{ q.id }}" id="q_{{ q.id }}_no" value="No" autocomplete="off" data-q-text="{{ q.question_text }}">
+                                    <label class="btn btn-outline-danger px-4" for="q_{{ q.id }}_no">No</label>
+                                </div>
+
+                            {% elif q.question_type == 'single_choice' %}
+                                <div class="options-radio-list">
+                                    {% for opt in q.get_options() %}
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input q-input-field {% if q.is_required %}required-q{% endif %}" type="radio" name="question_{{ q.id }}" id="q_{{ q.id }}_{{ loop.index }}" value="{{ opt }}" data-q-text="{{ q.question_text }}">
+                                            <label class="form-check-label" for="q_{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                            {% elif q.question_type == 'multi_choice' %}
+                                <div class="options-checkbox-list">
+                                    {% for opt in q.get_options() %}
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input q-multi-input {% if q.is_required %}required-q{% endif %}" type="checkbox" name="question_{{ q.id }}" id="q_{{ q.id }}_{{ loop.index }}" value="{{ opt }}" data-q-text="{{ q.question_text }}">
+                                            <label class="form-check-label" for="q_{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                            {% elif q.question_type == 'text' %}
+                                <textarea name="question_{{ q.id }}" class="form-control q-input-field {% if q.is_required %}required-q{% endif %}" rows="3" placeholder="Type your answer here..." data-q-text="{{ q.question_text }}"></textarea>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="mb-3">
+                {{ form.review_text.label(class="form-label fw-bold") }}
+                {{ form.review_text(class="form-control", rows="4", placeholder="Tell us more about your experience...") }}
+            </div>
+
+            <div class="step-nav-buttons d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-secondary prev-step-btn">&larr; Back</button>
+                <button type="button" class="btn btn-primary next-step-btn px-4">Next: About You &rarr;</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: ABOUT YOU -->
+        <div class="wizard-step card p-4 mb-4 shadow-sm" data-step="3" style="display: none;">
+            <h3 class="h5 fw-bold mb-1 border-bottom pb-2">About You</h3>
+            <p class="text-muted small mb-4">Tell us a little bit about yourself.</p>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    {{ form.reviewer_name.label(class="form-label fw-bold") }} <span class="text-danger">*</span>
+                    {{ form.reviewer_name(class="form-control", id="reviewer_name") }}
+                    {% for error in form.reviewer_name.errors %}
+                        <div class="form-error text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-6">
+                    {{ form.reviewer_email.label(class="form-label fw-bold") }} <span class="text-danger">*</span>
+                    {{ form.reviewer_email(class="form-control", id="reviewerEmail") }}
+                    {% for error in form.reviewer_email.errors %}
+                        <div class="form-error text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                    <div class="email-check-message small mt-1" id="emailCheckMessage"></div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ form.attendee_type.label(class="form-label fw-bold") }}
+                {{ form.attendee_type(class="form-select", id="attendee_type") }}
+            </div>
+
+            {% if event.allow_location_questions %}
+                <div class="p-3 bg-light rounded border mb-3">
+                    <h6 class="fw-bold mb-2"><i class="fas fa-map-marked-alt text-primary me-1"></i> Where are you attending from?</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            {{ form.reviewer_town.label(class="form-label small") }}
+                            {{ form.reviewer_town(class="form-control form-control-sm", placeholder="e.g. Springfield") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.reviewer_state.label(class="form-label small") }}
+                            {{ form.reviewer_state(class="form-control form-control-sm", placeholder="e.g. IL or Illinois") }}
+                        </div>
+                    </div>
+                    <div class="form-text small text-muted mt-2">
+                        <i class="fas fa-lock text-success me-1"></i> Helps the organizer understand their audience — never shown publicly.
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="step-nav-buttons d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-secondary prev-step-btn">&larr; Back</button>
+                <button type="button" class="btn btn-primary next-step-btn px-4">Review & Submit &rarr;</button>
+            </div>
+        </div>
+
+        <!-- STEP 4: REVIEW & SUBMIT SUMMARY -->
+        <div class="wizard-step card p-4 mb-4 shadow-sm" data-step="4" style="display: none;">
+            <h3 class="h5 fw-bold mb-1 border-bottom pb-2">Review Your Answers</h3>
+            <p class="text-muted small mb-4">Please verify your responses before submitting.</p>
+
+            <div id="wizard-summary-container" class="mb-4">
+                <!-- Populated via JS -->
+            </div>
+
+            <div class="step-nav-buttons d-flex justify-content-between mt-4 pt-3 border-top">
+                <button type="button" class="btn btn-secondary prev-step-btn">&larr; Edit Answers</button>
+                {{ form.submit(class="btn btn-success btn-lg px-5 fw-bold", id="submitBtn", value="Submit Review") }}
+            </div>
+        </div>
+    </form>
+
+    <!-- Progressive Enhancement Fallback for non-JS -->
+    <noscript>
+        <style>
+            .wizard-step { display: block !important; margin-bottom: 2rem !important; }
+            .review-wizard-progress { display: none !important; }
+            .step-nav-buttons { display: none !important; }
+        </style>
+        <div class="text-center my-3">
+            <button type="submit" form="reviewForm" class="btn btn-success btn-lg">Submit Review</button>
+        </div>
+    </noscript>
+
+    <div class="form-footer text-center mt-3">
+        <p class="small text-muted">Already reviewed this event? <a href="{{ url_for('main.browse_reviews', unique_code=event.unique_code) }}">Browse attendee reviews</a></p>
     </div>
 </div>
 {% endblock %}

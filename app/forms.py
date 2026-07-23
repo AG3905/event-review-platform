@@ -30,12 +30,18 @@ class RegistrationForm(FlaskForm):
         if user:
             raise ValidationError('Email already registered. Please use a different email address.')
 
+def check_custom_category(form, field):
+    if form.category.data == 'Other':
+        if not field.data or not field.data.strip():
+            raise ValidationError('Please specify a custom event type when "Other" is selected.')
+
 class EventForm(FlaskForm):
     title = StringField('Event Title', validators=[DataRequired(), Length(max=200)])
     category = SelectField('Category', 
                           choices=[('Music', 'Music'), ('Comedy', 'Comedy'), ('Workshop', 'Workshop'), 
                                  ('Conference', 'Conference'), ('Sports', 'Sports'), ('Other', 'Other')],
                           validators=[DataRequired()])
+    custom_category = StringField('Custom Event Type', validators=[check_custom_category, Length(max=50)])
     description = TextAreaField('Description', validators=[Optional()])
     venue = StringField('Venue', validators=[DataRequired(), Length(max=200)])
     event_date = DateField('Event Date', validators=[DataRequired()])
@@ -50,6 +56,8 @@ class EventForm(FlaskForm):
 class ReviewForm(FlaskForm):
     reviewer_name = StringField('Your Name', validators=[DataRequired(), Length(max=100)])
     reviewer_email = StringField('Email', validators=[DataRequired(), Email()])
+    reviewer_town = StringField('Your Town/City', validators=[Optional(), Length(max=100)], render_kw={'autocomplete': 'address-level2'})
+    reviewer_state = StringField('State/Province', validators=[Optional(), Length(max=100)], render_kw={'autocomplete': 'address-level1'})
     # IntegerField ensures NumberRange receives a numeric value while
     # render_kw keeps the field out of the public form layout.
     star_rating = IntegerField('Rating', validators=[DataRequired(), NumberRange(min=1, max=5)],
@@ -65,7 +73,7 @@ class ReviewForm(FlaskForm):
                                       ('Other', 'Other')],
                                validators=[Optional()])
 
-    # Review categories (checkboxes)
+    # Review categories (checkboxes retained for backwards compatibility)
     great_sound = BooleanField('Great Sound')
     good_venue = BooleanField('Good Venue')
     worth_price = BooleanField('Worth the Price')
@@ -78,14 +86,13 @@ class ReviewForm(FlaskForm):
     submit = SubmitField('Submit Review')
 
 
-
-
 class EditEventForm(FlaskForm):
     title = StringField('Event Title', validators=[DataRequired(), Length(max=200)])
     category = SelectField('Category', 
                           choices=[('Music', 'Music'), ('Comedy', 'Comedy'), ('Workshop', 'Workshop'), 
                                  ('Conference', 'Conference'), ('Sports', 'Sports'), ('Other', 'Other')],
                           validators=[DataRequired()])
+    custom_category = StringField('Custom Event Type', validators=[check_custom_category, Length(max=50)])
     description = TextAreaField('Description', validators=[Optional()])
     venue = StringField('Venue', validators=[DataRequired(), Length(max=200)])
     event_date = DateField('Event Date', validators=[DataRequired()])

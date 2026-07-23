@@ -10,21 +10,21 @@ A comprehensive web-based platform for event organizers to collect and manage au
 
 ### For Event Organizers
 - **User Authentication**: Secure registration, login, and password reset flow via time-limited signed tokens
-
-- **Event Management**: Create, edit, and manage events with detailed information
+- **Event Management & Custom Categories**: Create and edit events with standard or custom event categories ("Other")
+- **Customizable Question Builder**: Configure up to 10 active feedback questions per event (rating, yes/no, single choice, multiple choice, text) pre-filled with category-aware templates
+- **Reusable Question Templates**: Save customized question sets as reusable templates and apply them across events
+- **Audience Location Insights**: Collect attendee town/city and state/province for location breakdowns (stored privately and never rendered publicly)
+- **Tabbed Interface**: Streamlined 3-tab layout (Details, Questions, Settings) for event management
 - **QR Code Generation**: Automatically generate QR codes for easy review access
-- **Review Dashboard**: View and manage all reviews with filtering and sorting
-- **Analytics**: Comprehensive analytics including rating distributions and trends
-- **Data Export**: Export review data to CSV files
-- **Review Moderation**: Approve, feature, and manage individual reviews
+- **Live Background Updates & In-Place Moderation**: In-place moderation actions without page reloads and 15s background polling for live review updates
+- **Analytics & Dynamic Data Export**: Comprehensive analytics (per-question breakdown, location metrics) and dynamic CSV export
 
 ### For Public Reviewers (no account)
 - **Easy Access**: Scan QR codes or use direct links to access review forms
-- **Multi-step Review Process**: Intuitive step-by-step review submission
-- **Star Ratings**: Interactive 5-star rating system
-- **Category Feedback**: Quick feedback on specific aspects (sound, venue, organization, etc.)
-- **Written Reviews**: Optional detailed text feedback
-- **Review Browsing**: View other attendees' reviews and ratings
+- **Multi-Step Review Wizard**: Modern 4-step wizard with progress bar (Rating -> Feedback Questions -> About You -> Summary & Submit)
+- **Progressive Enhancement**: Seamless single-page fallback when JavaScript is disabled
+- **Star Ratings & Dynamic Questions**: Interactive 5-star rating system and category-specific dynamic question widgets
+- **Privacy Protections**: Location fields and emails are strictly private and never exposed on public review pages
 
 ## Technology Stack
 

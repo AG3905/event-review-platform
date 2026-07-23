@@ -1,8 +1,9 @@
 from flask import jsonify, request, abort
 from flask_login import login_required, current_user
 from app.api import bp
-from app.models import Event, Review, db
-from app.decorators import organizer_required
+from app.models import Event, Review, SavedQuestionSet, User, db
+from app.decorators import admin_required, organizer_required
+from app.question_templates import suggest_questions_for, DEFAULT_LOCATION_QUESTIONS
 
 
 def _manageable_review_or_404(review_id):
@@ -114,3 +115,133 @@ def check_email():
         'exists': existing_review is not None,
         'message': 'You have already reviewed this event' if existing_review else 'Email available'
     })
+
+@bp.route('/suggested-questions', methods=['GET'])
+def get_suggested_questions():
+    category = request.args.get('category', 'Other')
+    suggested = suggest_questions_for(category)
+    return jsonify({
+        'suggested': suggested,
+        'location': DEFAULT_LOCATION_QUESTIONS
+    })
+
+@bp.route('/saved-question-sets', methods=['GET'])
+@organizer_required
+def get_saved_question_sets():
+    sets = SavedQuestionSet.query.filter_by(organizer_id=current_user.id).all()
+    return jsonify([
+        {
+            'id': s.id,
+            'name': s.name,
+            'questions': s.get_questions()
+        } for s in sets
+    ])
+
+@bp.route('/saved-question-sets', methods=['POST'])
+@organizer_required
+def save_question_set():
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    questions = data.get('questions', [])
+
+    if not name:
+        return jsonify({'error': 'Template name is required'}), 400
+    if not questions:
+        return jsonify({'error': 'Questions list cannot be empty'}), 400
+
+    saved_set = SavedQuestionSet(organizer_id=current_user.id, name=name)
+    saved_set.set_questions(questions)
+    db.session.add(saved_set)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'id': saved_set.id,
+        'name': saved_set.name,
+        'questions': saved_set.get_questions()
+    })
+
+@bp.route('/event/<int:event_id>/review-count', methods=['GET'])
+@login_required
+def event_review_count(event_id):
+    if current_user.is_organizer:
+        event = Event.query.filter_by(id=event_id, user_id=current_user.id).first_or_404()
+    elif current_user.is_platform_admin:
+        event = Event.query.filter_by(id=event_id).first_or_404()
+    else:
+        abort(403)
+
+    reviews = event.reviews
+    approved_reviews = [r for r in reviews if r.is_approved]
+    pending_count = len([r for r in reviews if not r.is_approved])
+    avg_rating = event.get_average_rating()
+    
+    last_review = max([r.submitted_at for r in reviews], default=None) if reviews else None
+    last_review_at = last_review.isoformat() if last_review else None
+
+    since_str = request.args.get('since')
+    new_reviews_data = []
+    if since_str:
+        try:
+            from datetime import datetime
+            since_dt = datetime.fromisoformat(since_str)
+            new_reviews = [r for r in reviews if r.submitted_at > since_dt]
+            for r in new_reviews:
+                new_reviews_data.append({
+                    'id': r.id,
+                    'reviewer_name': r.reviewer_name,
+                    'star_rating': r.star_rating,
+                    'review_text': r.review_text,
+                    'is_approved': r.is_approved,
+                    'is_featured': r.is_featured,
+                    'submitted_at': r.submitted_at.isoformat()
+                })
+        except Exception:
+            pass
+
+    return jsonify({
+        'total_reviews': len(reviews),
+        'approved_count': len(approved_reviews),
+        'pending_count': pending_count,
+        'average_rating': avg_rating,
+        'last_review_at': last_review_at,
+        'new_reviews': new_reviews_data
+    })
+
+@bp.route('/dashboard/summary', methods=['GET'])
+@organizer_required
+def dashboard_summary():
+    events = Event.query.filter_by(user_id=current_user.id).all()
+    total_events = len(events)
+    all_reviews = []
+    for e in events:
+        all_reviews.extend(e.reviews)
+    
+    total_reviews = len(all_reviews)
+    approved_reviews = [r for r in all_reviews if r.is_approved]
+    avg_rating = (sum(r.star_rating for r in approved_reviews) / len(approved_reviews)) if approved_reviews else 0
+    last_review = max([r.submitted_at for r in all_reviews], default=None) if all_reviews else None
+    
+    return jsonify({
+        'total_events': total_events,
+        'total_reviews': total_reviews,
+        'avg_rating': round(avg_rating, 2),
+        'last_review_at': last_review.isoformat() if last_review else None
+    })
+
+@bp.route('/admin/summary', methods=['GET'])
+@admin_required
+def admin_summary():
+    total_organizers = User.query.filter_by(role='organizer').count()
+    total_events = Event.query.count()
+    total_reviews = Review.query.count()
+    approved_reviews = Review.query.filter_by(is_approved=True).all()
+    avg_rating = (sum(r.star_rating for r in approved_reviews) / len(approved_reviews)) if approved_reviews else 0
+
+    return jsonify({
+        'total_organizers': total_organizers,
+        'total_events': total_events,
+        'total_reviews': total_reviews,
+        'avg_rating': round(avg_rating, 2)
+    })
+

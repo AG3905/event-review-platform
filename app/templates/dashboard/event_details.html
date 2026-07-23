@@ -190,6 +190,67 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Per-Question Feedback Breakdown -->
+                    {% if question_stats %}
+                    <div class="chart-card mt-4 col-12">
+                        <h3 class="chart-title">Custom Questions Breakdown</h3>
+                        <div class="questions-breakdown-list">
+                            {% for stat in question_stats %}
+                                <div class="question-stat-item border-bottom py-2">
+                                    <div class="fw-bold">{{ stat.question.question_text }} <span class="badge bg-secondary">{{ stat.question.question_type }}</span></div>
+                                    <div class="small text-muted mb-1">Total responses: {{ stat.total_answers }}</div>
+                                    {% if stat.question.question_type == 'rating' %}
+                                        <div class="text-warning fw-bold">Average Rating: {{ stat.avg }} / 5 Stars</div>
+                                    {% elif stat.question.question_type in ('single_choice', 'multi_choice') and stat.distribution %}
+                                        <div class="choice-dist-list ps-2">
+                                            {% for opt, count in stat.distribution.items() %}
+                                                <div class="small"><strong>{{ opt }}:</strong> {{ count }} votes</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% elif stat.question.question_type == 'yes_no' %}
+                                        <div class="small"><strong>Yes:</strong> {{ stat.yes_count }} | <strong>No:</strong> {{ stat.no_count }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Audience Location Insights -->
+                    {% if top_towns or top_states %}
+                    <div class="chart-card mt-4 col-12">
+                        <h3 class="chart-title"><i class="fas fa-map-marked-alt text-primary me-1"></i> Audience Location Insights</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold mb-2">Top Towns / Cities</h6>
+                                <ul class="list-group list-group-flush small">
+                                    {% for town, count in top_towns %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ town }}
+                                            <span class="badge bg-primary rounded-pill">{{ count }} attendee{{ 's' if count != 1 else '' }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="list-group-item text-muted">No town data available</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold mb-2">Top States / Provinces</h6>
+                                <ul class="list-group list-group-flush small">
+                                    {% for state, count in top_states %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ state }}
+                                            <span class="badge bg-info text-dark rounded-pill">{{ count }} attendee{{ 's' if count != 1 else '' }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="list-group-item text-muted">No state data available</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

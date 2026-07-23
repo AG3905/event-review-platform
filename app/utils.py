@@ -39,19 +39,25 @@ def export_reviews_csv(event):
     """Export event reviews to an in-memory BytesIO CSV buffer"""
     string_io = io.StringIO()
 
+    active_questions = [q for q in event.questions if q.is_active]
+
     fieldnames = [
-        'Review ID', 'Reviewer Name', 'Reviewer Email', 'Star Rating',
-        'Review Text', 'Categories', 'Attendee Type', 'Would Recommend',
+        'Review ID', 'Reviewer Name', 'Reviewer Email', 'Reviewer Town', 'Reviewer State',
+        'Star Rating', 'Review Text', 'Categories', 'Attendee Type', 'Would Recommend',
         'Submitted At', 'Is Approved', 'Is Featured', 'Quality Score'
-    ]
+    ] + [q.question_text for q in active_questions]
+
     writer = csv.DictWriter(string_io, fieldnames=fieldnames)
     writer.writeheader()
 
     for review in event.reviews:
-        writer.writerow({
+        answers_map = {ans.question_id: ans.answer_text for ans in review.answers}
+        row = {
             'Review ID': review.id,
             'Reviewer Name': review.reviewer_name,
             'Reviewer Email': review.reviewer_email,
+            'Reviewer Town': review.reviewer_town or '',
+            'Reviewer State': review.reviewer_state or '',
             'Star Rating': review.star_rating,
             'Review Text': review.review_text or '',
             'Categories': ', '.join(review.get_categories()),
@@ -61,7 +67,10 @@ def export_reviews_csv(event):
             'Is Approved': 'Yes' if review.is_approved else 'No',
             'Is Featured': 'Yes' if review.is_featured else 'No',
             'Quality Score': review.get_quality_score()
-        })
+        }
+        for q in active_questions:
+            row[q.question_text] = answers_map.get(q.id, '')
+        writer.writerow(row)
 
     csv_bytes = string_io.getvalue().encode('utf-8')
     buf = io.BytesIO(csv_bytes)
