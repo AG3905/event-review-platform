@@ -14,52 +14,64 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        'event_questions',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('event_id', sa.Integer(), nullable=False),
-        sa.Column('question_text', sa.String(length=300), nullable=False),
-        sa.Column('question_type', sa.String(length=20), nullable=False),
-        sa.Column('options', sa.Text(), nullable=True),
-        sa.Column('is_required', sa.Boolean(), nullable=True, server_default=sa.text('false')),
-        sa.Column('display_order', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('is_active', sa.Boolean(), nullable=True, server_default=sa.text('true')),
-        sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_event_questions_event_id', 'event_questions', ['event_id'], unique=False)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    op.create_table(
-        'review_answers',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('review_id', sa.Integer(), nullable=False),
-        sa.Column('question_id', sa.Integer(), nullable=False),
-        sa.Column('answer_text', sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(['question_id'], ['event_questions.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['review_id'], ['reviews.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_review_answers_question_id', 'review_answers', ['question_id'], unique=False)
-    op.create_index('ix_review_answers_review_id', 'review_answers', ['review_id'], unique=False)
+    if not inspector.has_table('event_questions'):
+        op.create_table(
+            'event_questions',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('event_id', sa.Integer(), nullable=False),
+            sa.Column('question_text', sa.String(length=300), nullable=False),
+            sa.Column('question_type', sa.String(length=20), nullable=False),
+            sa.Column('options', sa.Text(), nullable=True),
+            sa.Column('is_required', sa.Boolean(), nullable=True, server_default=sa.text('false')),
+            sa.Column('display_order', sa.Integer(), nullable=True, server_default='0'),
+            sa.Column('is_active', sa.Boolean(), nullable=True, server_default=sa.text('true')),
+            sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index('ix_event_questions_event_id', 'event_questions', ['event_id'], unique=False)
 
-    op.create_table(
-        'saved_question_sets',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('organizer_id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(length=100), nullable=False),
-        sa.Column('questions', sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(['organizer_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_saved_question_sets_organizer_id', 'saved_question_sets', ['organizer_id'], unique=False)
+    if not inspector.has_table('review_answers'):
+        op.create_table(
+            'review_answers',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('review_id', sa.Integer(), nullable=False),
+            sa.Column('question_id', sa.Integer(), nullable=False),
+            sa.Column('answer_text', sa.Text(), nullable=True),
+            sa.ForeignKeyConstraint(['question_id'], ['event_questions.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['review_id'], ['reviews.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index('ix_review_answers_question_id', 'review_answers', ['question_id'], unique=False)
+        op.create_index('ix_review_answers_review_id', 'review_answers', ['review_id'], unique=False)
 
+    if not inspector.has_table('saved_question_sets'):
+        op.create_table(
+            'saved_question_sets',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('organizer_id', sa.Integer(), nullable=False),
+            sa.Column('name', sa.String(length=100), nullable=False),
+            sa.Column('questions', sa.Text(), nullable=True),
+            sa.ForeignKeyConstraint(['organizer_id'], ['users.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index('ix_saved_question_sets_organizer_id', 'saved_question_sets', ['organizer_id'], unique=False)
+
+    event_cols = [c['name'] for c in inspector.get_columns('events')]
     with op.batch_alter_table('events') as batch:
-        batch.add_column(sa.Column('is_custom_category', sa.Boolean(), nullable=True, server_default=sa.text('false')))
-        batch.add_column(sa.Column('allow_location_questions', sa.Boolean(), nullable=True, server_default=sa.text('true')))
+        if 'is_custom_category' not in event_cols:
+            batch.add_column(sa.Column('is_custom_category', sa.Boolean(), nullable=True, server_default=sa.text('false')))
+        if 'allow_location_questions' not in event_cols:
+            batch.add_column(sa.Column('allow_location_questions', sa.Boolean(), nullable=True, server_default=sa.text('true')))
 
+    review_cols = [c['name'] for c in inspector.get_columns('reviews')]
     with op.batch_alter_table('reviews') as batch:
-        batch.add_column(sa.Column('reviewer_town', sa.String(length=100), nullable=True))
-        batch.add_column(sa.Column('reviewer_state', sa.String(length=100), nullable=True))
+        if 'reviewer_town' not in review_cols:
+            batch.add_column(sa.Column('reviewer_town', sa.String(length=100), nullable=True))
+        if 'reviewer_state' not in review_cols:
+            batch.add_column(sa.Column('reviewer_state', sa.String(length=100), nullable=True))
 
     bind = op.get_bind()
     events = bind.execute(sa.text("SELECT id FROM events")).fetchall()
