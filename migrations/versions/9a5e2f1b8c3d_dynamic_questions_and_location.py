@@ -21,9 +21,9 @@ def upgrade():
         sa.Column('question_text', sa.String(length=300), nullable=False),
         sa.Column('question_type', sa.String(length=20), nullable=False),
         sa.Column('options', sa.Text(), nullable=True),
-        sa.Column('is_required', sa.Boolean(), nullable=True, server_default='0'),
+        sa.Column('is_required', sa.Boolean(), nullable=True, server_default=sa.text('false')),
         sa.Column('display_order', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('is_active', sa.Boolean(), nullable=True, server_default='1'),
+        sa.Column('is_active', sa.Boolean(), nullable=True, server_default=sa.text('true')),
         sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
@@ -54,8 +54,8 @@ def upgrade():
     op.create_index('ix_saved_question_sets_organizer_id', 'saved_question_sets', ['organizer_id'], unique=False)
 
     with op.batch_alter_table('events') as batch:
-        batch.add_column(sa.Column('is_custom_category', sa.Boolean(), nullable=True, server_default='0'))
-        batch.add_column(sa.Column('allow_location_questions', sa.Boolean(), nullable=True, server_default='1'))
+        batch.add_column(sa.Column('is_custom_category', sa.Boolean(), nullable=True, server_default=sa.text('false')))
+        batch.add_column(sa.Column('allow_location_questions', sa.Boolean(), nullable=True, server_default=sa.text('true')))
 
     with op.batch_alter_table('reviews') as batch:
         batch.add_column(sa.Column('reviewer_town', sa.String(length=100), nullable=True))
@@ -75,9 +75,10 @@ def upgrade():
         for idx, (q_text, q_type) in enumerate(legacy_keys):
             res = bind.execute(sa.text(
                 "INSERT INTO event_questions (event_id, question_text, question_type, is_required, display_order, is_active) "
-                "VALUES (:event_id, :q_text, :q_type, 0, :idx, 1)"
-            ), {"event_id": event_id, "q_text": q_text, "q_type": q_type, "idx": idx})
-            q_id = res.lastrowid
+                "VALUES (:event_id, :q_text, :q_type, :is_req, :idx, :is_act) RETURNING id"
+            ), {"event_id": event_id, "q_text": q_text, "q_type": q_type, "is_req": False, "idx": idx, "is_act": True})
+            row = res.fetchone()
+            q_id = row[0] if row else None
             q_ids[q_text] = q_id
 
         reviews = bind.execute(sa.text(
@@ -103,6 +104,7 @@ def downgrade():
         batch.drop_column('reviewer_town')
 
     with op.batch_alter_table('events') as batch:
+        batch.drop_column('allow_location_questions')
         batch.drop_column('is_custom_category')
 
     op.drop_index('ix_saved_question_sets_organizer_id', table_name='saved_question_sets')
@@ -114,3 +116,4 @@ def downgrade():
 
     op.drop_index('ix_event_questions_event_id', table_name='event_questions')
     op.drop_table('event_questions')
+
