@@ -1,42 +1,362 @@
 # Event Review Platform
 
-A comprehensive web-based platform for event organizers to collect and manage audience feedback through streamlined review forms and QR codes.
+## 1. Project Title and Aim
 
-## Features
+### Project Title
+Event Review Platform
 
-### Authenticated roles
-- **Platform Admin**: Global console for all organizers, events, and reviews.
-- **Organizer**: Private, tenant-isolated event and feedback workspace.
+### Aim and Problem Solved
+The Event Review Platform is a full-stack Flask web application designed for event organizers to collect, manage, and analyze audience feedback efficiently. Traditional feedback collection methods often suffer from low response rates, rigid survey forms, or complex attendee login requirements. This platform addresses those challenges by providing:
+- Frictionless public review submissions where attendees scan a QR code or follow a unique link to rate events without needing to register or log in.
+- Customizable, category-aware feedback forms allowing event organizers to configure up to 10 custom questions (rating, single-choice, multiple-choice, yes/no, or free text).
+- Real-time moderation, live dashboard updates, demographic insights, and CSV exports to enable organizers to act on attendee feedback.
+- Global administration and platform-wide monitoring capabilities for platform administrators.
+
+### Target Audience and User Roles
+- **Organizer**: Event host or manager who creates events, sets up question sets, generates shareable QR codes, views live analytics, moderates attendee reviews, and exports review data.
+- **Platform Admin**: Superuser role with global platform visibility across all organizers, events, and reviews, accessible via administrative dashboards and analytics endpoints.
+- **Public Reviewer (Attendee)**: Event attendee who accesses the event review page via a unique link or QR code, completes a multi-step review wizard (or single-page fallback), submits ratings and optional feedback, and browses approved public reviews.
+
+
+## 2. Features
 
 ### For Event Organizers
-- **User Authentication**: Secure registration, login, and password reset flow via time-limited signed tokens
-- **Event Management & Custom Categories**: Create and edit events with standard or custom event categories ("Other")
-- **Customizable Question Builder**: Configure up to 10 active feedback questions per event (rating, yes/no, single choice, multiple choice, text) pre-filled with category-aware templates
-- **Reusable Question Templates**: Save customized question sets as reusable templates and apply them across events
-- **Audience Location Insights**: Collect attendee town/city and state/province for location breakdowns (stored privately and never rendered publicly)
-- **Tabbed Interface**: Streamlined 3-tab layout (Details, Questions, Settings) for event management
-- **QR Code Generation**: Automatically generate QR codes for easy review access
-- **Live Background Updates & In-Place Moderation**: In-place moderation actions without page reloads and 15s background polling for live review updates
-- **Analytics & Dynamic Data Export**: Comprehensive analytics (per-question breakdown, location metrics) and dynamic CSV export
+- **User Authentication and Profile Management**: Registration, login with rate limiting, password changes, profile updates, and email-based password resets via signed tokens.
+- **Event Management**: Create, edit, and delete events with attributes including title, category, description, venue, date, time, capacity, review status toggle, and custom category handling.
+- **Custom Question Builder**: Add up to 10 active custom questions per event with support for rating scales (1-5), single-choice, multiple-choice, yes/no toggles, and text inputs.
+- **Category-Aware Question Suggestions**: Automated question suggestions tailored to event types (Music, Comedy, Workshop, Conference, Sports, Wedding, Corporate, Other).
+- **Reusable Question Templates**: Save customized question sets as reusable `SavedQuestionSet` templates across multiple events.
+- **QR Code and Link Generation**: Dynamic PNG QR code generation (in-memory with optional disk storage) pointing to the unique review URL (`/review/<unique_code>`).
+- **Review Moderation**: Approve, reject, feature, or delete reviews from the organizer dashboard or via dedicated REST API endpoints.
+- **Live Background Updates**: Client-side background polling (15-second interval) to display real-time review submissions and count updates without reloading the page.
+- **Organizer Analytics**: Per-event statistical summaries, star rating distributions, response rate calculations based on expected capacity, per-question response breakdowns, attendee town/state location counts, and top-word frequency analysis.
+- **Data Export**: Export event review records, metadata, and dynamic question answers as CSV files.
 
-### For Public Reviewers (no account)
-- **Easy Access**: Scan QR codes or use direct links to access review forms
-- **Multi-Step Review Wizard**: Modern 4-step wizard with progress bar (Rating -> Feedback Questions -> About You -> Summary & Submit)
-- **Progressive Enhancement**: Seamless single-page fallback when JavaScript is disabled
-- **Star Ratings & Dynamic Questions**: Interactive 5-star rating system and category-specific dynamic question widgets
-- **Privacy Protections**: Location fields and emails are strictly private and never exposed on public review pages
+### For Platform Admins
+- **Global Console**: Administrative views listing all registered organizers, all created events, and all submitted reviews across the system.
+- **Platform Analytics**: Aggregate metrics showing overall organizer count, event count, total review volume, and platform-average ratings.
+- **Role Elevation**: Automatic promotion of an organizer account to Platform Admin role upon sign-in if the account email matches the configured `PLATFORM_ADMIN_EMAIL` environment variable.
 
-## Technology Stack
+### For Public Reviewers (Attendees)
+- **No-Account Review Submission**: Access forms directly via short unique event codes without creating an account.
+- **Multi-Step Review Wizard**: 4-stage step-by-step review interface (Rating -> Custom Questions -> About You -> Summary & Submit) with step navigation and progress bar.
+- **Progressive Enhancement / No-JS Fallback**: Seamless single-page form rendering when JavaScript is disabled in the browser.
+- **Private Location Feedback**: Optional town/city and state/province collection kept strictly private for organizer analytics and never displayed publicly.
+- **Spam and Bot Mitigation**: Hidden honeypot field (`website`) to catch automated bots and IP-based rate limiting (10 reviews per hour).
+- **Duplicate Submission Guard**: One-review-per-email constraint enforced at both model and database levels per event.
+- **Public Review Browser**: Paginated public view (`/review/<unique_code>/browse`) showing approved reviews for the event.
 
-- **Backend**: Flask (Python web framework)
-- **Database**: PostgreSQL/Supabase in production, SQLite for local development
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Authentication**: Flask-Login with secure password hashing
-- **Forms**: Flask-WTF with CSRF protection
-- **QR Codes**: Python qrcode library
-- **Styling**: Custom CSS with responsive design
 
-## Installation
+## 3. Technology Stack
+
+### Backend
+- **Python**: 3.11 (specified in Dockerfile and render.yaml)
+- **Framework**: Flask 2.3.3
+- **WSGI Server**: Gunicorn 21.2.0
+- **HTTP/Web Utility**: Werkzeug 2.3.7
+
+### Database and ORM
+- **ORM**: SQLAlchemy via Flask-SQLAlchemy 3.0.5
+- **Migrations**: Flask-Migrate 4.0.5 (Alembic)
+- **Database Engine (Production)**: PostgreSQL 15 via `psycopg2-binary` 2.9.9
+- **Database Engine (Development)**: SQLite (`sqlite:///event_reviews.db`)
+
+### Authentication and Security
+- **Authentication**: Flask-Login 0.6.3
+- **Form Handling & Validation**: Flask-WTF 1.1.1, WTForms 3.0.1, email_validator
+- **Security Headers**: Flask-Talisman 1.1.0 (Content Security Policy)
+- **Rate Limiting**: Flask-Limiter 3.5.0 (with optional Redis backend)
+- **Bot Mitigation**: Cloudflare Turnstile integration support (`TURNSTILE_SITE_KEY`) and honeypot validation
+- **Token Generation**: `itsdangerous` (URLSafeTimedSerializer for password resets)
+
+### Supporting Libraries
+- **QR Code Generation**: `qrcode` 7.4.2 and `Pillow` >=10.0.1
+- **Email Delivery**: Flask-Mail 0.9.1
+- **Environment Management**: `python-dotenv` 1.0.0
+- **Date/Time Utilities**: `python-dateutil` 2.8.2 and standard `zoneinfo`
+- **Error Tracking**: `sentry-sdk` 1.27.0 (with Flask integration)
+- **Caching / Rate Limit Store**: Redis 7 via `redis` 4.6.0 python package
+
+### Frontend
+- **HTML/CSS**: HTML5 and Vanilla CSS3 (custom CSS variables, responsive flexbox/grid layout)
+- **JavaScript**: Vanilla JavaScript (ES6+, Fetch API, multi-step wizard logic, live updates polling)
+
+### Testing
+- **Test Framework**: `pytest` 7.4.2
+- **Flask Test Helpers**: `pytest-flask` 1.2.0
+- **Code Coverage**: `pytest-cov` 4.1.0
+
+### Deployment and Infrastructure
+- **Containerization**: Docker (`FROM python:3.11-slim`), Docker Compose 3.8 (Web, PostgreSQL 15, Redis 7)
+- **PaaS Deployment**: Render (`render.yaml`, `build.sh`, `Procfile`)
+
+
+## 4. Database Schema
+
+The database consists of 6 tables defined using SQLAlchemy ORM in `app/models.py`.
+
++-------------------------------------------------------------------------------+
+|                                    USERS                                      |
++-------------------+---------------+-------------------------------------------+
+| Field             | Type          | Attributes                                |
++-------------------+---------------+-------------------------------------------+
+| id                | INTEGER       | Primary Key, Auto Increment               |
+| username          | VARCHAR(50)   | Unique, Not Null                          |
+| email             | VARCHAR(100)  | Unique, Not Null                          |
+| password_hash     | VARCHAR(255)  | Not Null                                  |
+| full_name         | VARCHAR(100)  | Nullable                                  |
+| organization      | VARCHAR(100)  | Nullable                                  |
+| created_at        | DATETIME      | Default: UTC Now                          |
+| last_login        | DATETIME      | Nullable                                  |
+| is_active         | BOOLEAN       | Default: True                             |
+| role              | VARCHAR(20)   | Index, Not Null, Default: 'organizer'     |
++-------------------+---------------+-------------------------------------------+
+         |                                           |
+         | 1-to-Many                                 | 1-to-Many
+         v                                           v
++-----------------------------------+     +-------------------------------------+
+|              EVENTS               |     |         SAVED_QUESTION_SETS         |
++-------------------+---------------+     +------------------+------------------+
+| Field             | Type          |     | Field            | Type             |
++-------------------+---------------+     +------------------+------------------+
+| id                | INT (PK)      |     | id               | INT (PK)         |
+| user_id           | INT (FK)      |     | organizer_id     | INT (FK)         |
+| title             | VARCHAR(200)  |     | name             | VARCHAR(100)     |
+| category          | VARCHAR(50)   |     | questions        | TEXT (JSON)      |
+| is_custom_cat     | BOOLEAN       |     +------------------+------------------+
+| description       | TEXT          |       Foreign Key: organizer_id -> users.id
+| venue             | VARCHAR(200)  |
+| event_date        | DATE          |
+| event_time        | TIME          |
+| capacity          | INTEGER       |
+| status            | VARCHAR(20)   |
+| unique_code       | VARCHAR(10) U |
+| allow_reviews     | BOOLEAN       |
+| allow_loc_q       | BOOLEAN       |
+| created_at        | DATETIME      |
+| updated_at        | DATETIME      |
++-------------------+---------------+
+  Foreign Key: user_id -> users.id
+         |
+         +-----------------------------------+
+         | 1-to-Many                         | 1-to-Many
+         v                                   v
++-----------------------------------+     +-------------------------------------+
+|              REVIEWS              |     |           EVENT_QUESTIONS           |
++-------------------+---------------+     +------------------+------------------+
+| Field             | Type          |     | Field            | Type             |
++-------------------+---------------+     +------------------+------------------+
+| id                | INT (PK)      |     | id               | INT (PK)         |
+| event_id          | INT (FK)      |     | event_id         | INT (FK)         |
+| reviewer_name     | VARCHAR(100)  |     | question_text    | VARCHAR(300)     |
+| reviewer_email    | VARCHAR(100)  |     | question_type    | VARCHAR(20)      |
+| reviewer_town     | VARCHAR(100)  |     | options          | TEXT (JSON)      |
+| reviewer_state    | VARCHAR(100)  |     | is_required      | BOOLEAN          |
+| star_rating       | INTEGER       |     | display_order    | INTEGER          |
+| review_text       | TEXT          |     | is_active        | BOOLEAN          |
+| review_categories | TEXT (JSON)   |     +------------------+------------------+
+| attendee_type     | VARCHAR(50)   |       Foreign Key: event_id -> events.id
+| would_recommend   | BOOLEAN       |                |
+| submitted_at      | DATETIME      |                | 1-to-Many
+| ip_address        | VARCHAR(45)   |                |
+| user_agent        | TEXT          |                v
+| is_approved       | BOOLEAN       |     +-------------------------------------+
+| is_featured       | BOOLEAN       |     |           REVIEW_ANSWERS            |
+| helpful_votes     | INTEGER       |     +------------------+------------------+
++-------------------+---------------+     | Field            | Type             |
+  Foreign Key: event_id -> events.id      +------------------+------------------+
+  Unique Constraint: (event_id, email)    | id               | INT (PK)         |
+         |                                | review_id        | INT (FK)         |
+         | 1-to-Many                      | question_id      | INT (FK)         |
+         v                                | answer_text      | TEXT             |
++-----------------------------------+     +------------------+------------------+
+|          REVIEW_ANSWERS           |       Foreign Keys:
+|   (linked via review_id FK)       |       - review_id -> reviews.id
++-----------------------------------+       - question_id -> event_questions.id
+
+
+## 5. Architecture Diagram
+
++---------------------------------------------------------------------------------+
+|                                  CLIENT LAYER                                   |
+|   Web Browsers (Desktop & Mobile) / Public Attendees / Organizers / Admins      |
++---------------------------------------------------------------------------------+
+                                         |
+                                         | HTTP / HTTPS Requests
+                                         v
++---------------------------------------------------------------------------------+
+|                                WEB SERVER LAYER                                 |
+|   Gunicorn WSGI Server (Binding: 0.0.0.0:$PORT, 4 Worker Processes)             |
++---------------------------------------------------------------------------------+
+                                         |
+                                         v
++---------------------------------------------------------------------------------+
+|                             APPLICATION LAYER (FLASK)                           |
+|  +---------------------------------------------------------------------------+  |
+|  |                             App Factory (app)                             |  |
+|  +---------------------------------------------------------------------------+  |
+|  | Blueprints:                                                               |  |
+|  |  - Auth BP (/auth)   : Login, Register, Profile, Password Reset           |  |
+|  |  - Main BP (/)       : Dashboard, Event CRUD, Review Wizard, Admin views  |  |
+|  |  - API BP (/api)     : Moderation, Analytics, Polls, Question Templates   |  |
+|  +---------------------------------------------------------------------------+  |
+|  | Security & Middleware:                                                    |  |
+|  |  - Flask-Talisman (CSP Headers) | Flask-Limiter (Rate Control)            |  |
+|  |  - Flask-WTF (CSRF Protection)  | Flask-Login (Session Handling)          |  |
+|  +---------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------+
+        |                        |                        |                       |
+        v                        v                        v                       v
++---------------+        +---------------+        +---------------+       +---------------+
+|   ORM LAYER   |        | CACHE / STORE |        | MAIL SERVICE  |       | ERROR TRACKING|
+|  SQLAlchemy   |        | Redis (7.0)   |        | Flask-Mail    |       | Sentry SDK    |
++---------------+        +---------------+        +---------------+       +---------------+
+        |                        |                        |                       |
+        v                        |                        v                       v
++---------------+                |                 SMTP Server             Sentry Cloud
+|   DATABASE    |                v
+| PostgreSQL /  |         Rate Limit Data
+| SQLite Engine |
++---------------+
+
+
+## 6. Use Case Diagram
+
++---------------------------------------------------------------------------------+
+|                                 SYSTEM ACTORS                                   |
++---------------------+-------------------------------+---------------------------+
+| ORGANIZER           | PUBLIC REVIEWER (ATTENDEE)    | PLATFORM ADMIN            |
++---------------------+-------------------------------+---------------------------+
+| - Register Account  | - Access Event via URL/QR     | - View Platform Admin     |
+| - Sign In / Out     | - Complete Review Wizard      |   Dashboard               |
+| - Manage Profile &  | - Submit Rating & Feedback    | - View All Organizers     |
+|   Password          | - Answer Custom Questions     | - View All Events         |
+| - Create Event      | - Submit Town/State (Private) | - View All Reviews        |
+| - Edit Event        | - Browse Approved Reviews     | - View System Analytics   |
+| - Delete Event      |                               | - Moderate Any Review     |
+| - Configure Custom  |                               |                           |
+|   Questions         |                               |                           |
+| - Save Question     |                               |                           |
+|   Sets              |                               |                           |
+| - Generate QR Code  |                               |                           |
+| - View Analytics    |                               |                           |
+| - Moderate Reviews  |                               |                           |
+| - Export Reviews    |                               |                           |
+|   to CSV            |                               |                           |
++---------------------+-------------------------------+---------------------------+
+
+
+## 7. Live Demo Link
+
+- Live Demo: https://event-review-platform-ywq6.onrender.com/
+
+
+## 8. Screenshots
+
+Below are captured screenshots of the deployed Event Review Platform interface:
+
+### Landing Page
+![Landing Page](docs/screenshots/landing_page.png)
+
+### Sign In Page
+![Sign In Page](docs/screenshots/login_page.png)
+
+### Registration Page
+![Registration Page](docs/screenshots/register_page.png)
+
+### Public Review Form Wizard
+![Public Review Form](docs/screenshots/public_review_page.png)
+
+### Review Submission Success
+![Review Success Page](docs/screenshots/review_success_page.png)
+
+### Organizer Event Dashboard & Analytics
+![Organizer Event Dashboard](docs/screenshots/event_details_dashboard.png)
+
+
+## 9. Project Structure
+
+```
+event_review_platform/
+├── .agents/                 # Workspace-specific agent configurations
+├── .env.example             # Template for environment variables
+├── .env.template            # Short template for required environment keys
+├── .gitignore               # Git file ignore rules
+├── .pyre_configuration      # Pyre type checker configuration
+├── DEPLOY.md                # Deployment guidelines and platform notes
+├── Dockerfile               # Production container image definition (Python 3.11-slim)
+├── Procfile                 # Process file for Heroku/Render Gunicorn startup
+├── README.md                # Project documentation
+├── build.sh                 # Build script for deployment (pip install + flask db upgrade)
+├── docker-compose.yml       # Multi-container Compose config (Web, PostgreSQL 15, Redis 7)
+├── docs/                    # Documentation assets
+│   └── screenshots/         # Captured screenshots of the live deployed web app
+├── pyrightconfig.json       # Pyright static analysis configuration
+├── pytest.ini               # pytest runner settings
+├── render.yaml              # Render blueprint deployment configuration
+├── requirements.txt         # Python package dependency manifest
+├── run.py                   # Local development server entrypoint
+├── app/                     # Flask application package
+│   ├── __init__.py          # App factory, extension setup, and blueprint registration
+│   ├── decorators.py        # Authorization decorators (@admin_required, @organizer_required)
+│   ├── forms.py             # WTForms forms for auth, event, review, and profile
+│   ├── models.py            # SQLAlchemy database models (User, Event, Review, etc.)
+│   ├── question_templates.py# Category question templates and helper functions
+│   ├── utils.py             # Helpers for QR generation, CSV export, and text processing
+│   ├── api/                 # API blueprint directory
+│   │   ├── __init__.py      # API blueprint initialization
+│   │   └── routes.py        # REST API routes (moderation, analytics, polling, saved sets)
+│   ├── auth/                # Authentication blueprint directory
+│   │   ├── __init__.py      # Auth blueprint initialization
+│   │   └── routes.py        # Authentication routes (login, register, reset password)
+│   ├── main/                # Main blueprint directory
+│   │   ├── __init__.py      # Main blueprint initialization
+│   │   └── routes.py        # Core application routes (dashboards, event CRUD, reviews)
+│   ├── static/              # Static web assets
+│   │   ├── css/             # Custom CSS stylesheets
+│   │   └── js/              # Client-side JavaScript files
+│   └── templates/           # Jinja2 HTML templates
+│       ├── 404.html         # Custom 404 error page template
+│       ├── 500.html         # Custom 500 error page template
+│       ├── base.html        # Base layout template
+│       ├── index.html       # Landing page template
+│       ├── admin/           # Admin console templates
+│       ├── auth/            # Authentication templates
+│       ├── components/      # Shared template components
+│       ├── dashboard/       # Organizer dashboard templates
+│       └── review/          # Public review wizard and browse templates
+├── migrations/              # Alembic database migration scripts
+├── scripts/                 # Database seeding and utility scripts
+│   └── seed_demo.py         # Seed script for generating demo data
+└── tests/                   # Automated test suite
+    ├── conftest.py          # Pytest fixtures and app setup
+    ├── test_auth.py         # Tests for authentication routes
+    ├── test_bot_mitigation.py # Tests for honeypot bot prevention
+    ├── test_csv_export_dynamic.py # Tests for CSV export generation
+    ├── test_custom_category.py # Tests for custom event categories
+    ├── test_event_ownership.py # Tests for event authorization rules
+    ├── test_event_questions.py # Tests for dynamic event question CRUD
+    ├── test_file_generation.py # Tests for QR code and file utilities
+    ├── test_live_update_endpoints.py # Tests for polling API endpoints
+    ├── test_pagination.py  # Tests for query pagination
+    ├── test_password_reset.py # Tests for password reset token flows
+    ├── test_rate_limits.py  # Tests for endpoint rate limits
+    ├── test_review_form_wizard_fallback.py # Tests for form wizard fallback
+    ├── test_review_moderation_api.py # Tests for review moderation API
+    ├── test_review_privacy.py # Tests for location privacy rules
+    ├── test_review_submission.py # Tests for standard review submissions
+    └── test_review_submission_dynamic.py # Tests for dynamic review answers
+```
+
+
+## 10. Installation Instructions
+
+### Prerequisites
+- Python 3.11 or higher
+- Git
+- Docker and Docker Compose (optional, for containerized local execution)
+
+### Option 1: Standard Local Setup
 
 1. **Clone the repository**
    ```bash
@@ -47,176 +367,168 @@ A comprehensive web-based platform for event organizers to collect and manage au
 2. **Create a virtual environment**
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+3. **Activate the virtual environment**
+   - On Linux/macOS:
+     ```bash
+     source venv/bin/activate
+     ```
+   - On Windows (PowerShell):
+     ```powershell
+     .\venv\Scripts\Activate.ps1
+     ```
+
+4. **Install dependencies**
    ```bash
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
-4. **Apply the database migration and run the application**
+5. **Configure environment variables**
+   Copy the example environment file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` to configure desired variables:
+   ```env
+   FLASK_DEBUG=True
+   PORT=5000
+   SECRET_KEY=dev-secret-key-change-in-production
+   PLATFORM_ADMIN_EMAIL=admin@example.com
+   # DATABASE_URL=postgresql://user:password@localhost:5432/eventdb
+   # RATELIMIT_STORAGE_URL=redis://localhost:6379/0
+   ```
+
+6. **Apply database migrations**
    ```bash
    flask db upgrade
+   ```
+
+7. **(Optional) Seed demo data**
+   ```bash
+   python scripts/seed_demo.py
+   ```
+
+8. **Run the application locally**
+   ```bash
    python run.py
    ```
+   Access the app at `http://localhost:5000`.
 
-5. **Access the application**
-   Open your browser and navigate to `http://localhost:5000`
+### Option 2: Docker Setup
 
-## Usage
+Run the entire application stack (Web, PostgreSQL 15, Redis 7) using Docker Compose:
 
-### Getting Started
+1. **Build and start services**
+   ```bash
+   docker-compose up --build
+   ```
 
-1. **Register an account** as an event organizer. Public reviewers never register or log in.
-2. **Create your first event** with all relevant details
-3. **Generate and share** the QR code or review link with attendees
-4. **Monitor reviews** through your dashboard
-5. **Export data** for further analysis
+2. **Apply migrations inside the web container**
+   ```bash
+   docker-compose exec web flask db upgrade
+   ```
 
-### Creating Events
+3. **Access the application**
+   Navigate to `http://localhost:8000`.
 
-- Fill in event details including title, category, venue, and date
-- Set expected capacity for response rate calculations
-- Choose whether to allow reviews (can be toggled later)
-- Get instant access to shareable QR codes and links
+### Running Tests
 
-### Managing Reviews
+Run the full automated test suite using `pytest`:
 
-- View all reviews in a centralized dashboard
-- Filter reviews by rating, date, or approval status
-- Feature important reviews for highlighting
-- Respond to reviews (optional feature)
-- Export review data as CSV files
-
-### Review Process (Attendees)
-
-1. **Access**: Scan QR code or click shared link
-2. **Information**: Provide name, email, and attendee type
-3. **Rating**: Select star rating with descriptive feedback
-4. **Categories**: Choose applicable categories (Great Sound, Good Venue, etc.)
-5. **Review**: Write optional detailed feedback
-6. **Submit**: Confirm submission and view other reviews
-
-## Project Structure
-
-```
-event_review_platform/
-├── app/
-│   ├── __init__.py              # Flask app factory
-│   ├── models.py                # Database models
-│   ├── forms.py                 # WTForms definitions
-│   ├── utils.py                 # Utility functions
-│   ├── auth/                    # Authentication blueprint
-│   ├── main/                    # Main application routes
-│   ├── api/                     # API endpoints
-│   ├── static/                  # Static files (CSS, JS, images)
-│   └── templates/               # Jinja2 templates
-├── requirements.txt             # Python dependencies
-├── run.py                      # Application entry point
-└── README.md                   # This file
+```bash
+pytest
 ```
 
-## Configuration
+To run with coverage report:
 
-The application uses Flask's built-in configuration system. Key settings:
+```bash
+pytest --cov=app
+```
 
-- **SECRET_KEY**: Used for session management and CSRF protection
-- **SQLALCHEMY_DATABASE_URI**: Database connection string
-- **WTF_CSRF_ENABLED**: CSRF protection toggle
 
-For production deployment, ensure to:
-- Change the SECRET_KEY to a secure random value
-- Use a production database (PostgreSQL recommended)
-- Enable HTTPS
-- Set up proper logging
+## 11. Deployment Instructions
 
-## Deploying to Render (recommended for interview/demo)
+This repository is configured for deployment on platforms such as **Render** (via `render.yaml`) or **Heroku** (via `Procfile`).
 
-Render requires explicit Build and Start commands and exposes the `PORT` environment variable to your service.
+### Render Deployment (Automated via Blueprint)
 
-Recommended Render settings:
+1. Connect the repository to your Render account.
+2. Render detects `render.yaml`, which configures:
+   - **Runtime**: Python 3.11
+   - **Build Command**: `bash build.sh` (installs dependencies and runs `flask db upgrade`)
+   - **Start Command**: `gunicorn 'app:create_app()' -w 4 -b 0.0.0.0:$PORT --log-level info`
+3. Configure the following environment variables in the Render Dashboard:
+   - `DATABASE_URL`: Connection string for PostgreSQL (e.g. Supabase or Render PostgreSQL).
+   - `SECRET_KEY`: Secure secret key generated for production session signing.
+   - `PLATFORM_ADMIN_EMAIL`: Email of the organizer account to promote to Platform Admin on sign-in.
+   - `FLASK_DEBUG`: Set to `False`.
+   - `RATELIMIT_STORAGE_URL`: (Optional) Redis connection URL for distributed rate limiting.
+   - `FILE_STORAGE_PATH`: (Optional) Path for persistent disk storage of QR codes and CSV exports.
 
-- Build Command (runs once during deploy; this repository also applies migrations in `build.sh`):
+### Manual / Generic Server Deployment
 
+1. **Environment Setup**:
+   Ensure Python 3.11 is installed on the host system.
+
+2. **Build Step**:
    ```bash
    pip install -r requirements.txt
+   export FLASK_APP=run.py
+   flask db upgrade
    ```
 
-- Start Command (keeps the app running; Render expects a long-lived process):
-
+3. **Production Startup (Gunicorn)**:
    ```bash
-   gunicorn "app:create_app()" -w 4 -b 0.0.0.0:$PORT
+   gunicorn "app:create_app()" -w 4 -b 0.0.0.0:${PORT:-8000} --log-level info
    ```
 
-Environment variables to add in the Render Dashboard (minimum):
-
-- `SECRET_KEY` — strong secret used for sessions and CSRF (required)
-- `DATABASE_URL` — e.g. `postgresql://user:pass@host:5432/dbname`
-- `FLASK_DEBUG=false`
-- `PLATFORM_ADMIN_EMAIL` — email of the account to promote to Platform Admin
-
-Optional / recommended:
-
-- `RATELIMIT_STORAGE_URL` — e.g. `redis://:<password>@redis-host:6379/0` if you use rate limiting
-- `SENTRY_DSN` — to enable error reporting in Sentry (optional)
-- `FILE_STORAGE_PATH` — optional path to persistent storage if archival of generated QR/CSV files on disk is desired (QR codes and CSV exports are generated in-memory by default)
+4. **Health Check Endpoint**:
+   Point your load balancer or host health monitor to `GET /health` (returns HTTP 200 `{"status": "ok"}`).
 
 
-Health check:
+## 12. Security Features, Browser Support, Contributing, License, Support, Roadmap
 
-- Point Render's health check to `GET /health` (responds with HTTP 200 and JSON `{"status":"ok"}`)
+### Security Features
+- **CSRF Protection**: All forms utilize Flask-WTF CSRF token validation (`WTF_CSRF_ENABLED=True`).
+- **Password Security**: Password hashing implemented via Werkzeug (`generate_password_hash` / `check_password_hash`).
+- **HTTP Security Headers**: Content Security Policy (CSP) headers applied globally via Flask-Talisman.
+- **Session and Cookie Security**: `SESSION_COOKIE_HTTPONLY=True`, `SESSION_COOKIE_SAMESITE='Lax'`, and secure cookie toggles in production.
+- **Rate Limiting**: Configured via Flask-Limiter (`200 per day`, `50 per hour` default; strict `5 per minute; 20 per hour` on login; `10 per hour` on review submissions).
+- **SQL Injection Prevention**: Data interactions managed securely via SQLAlchemy ORM parameterized queries.
+- **Bot Mitigation**: Honeypot field validation (`website` input) on review forms.
+- **Signed Tokens**: Time-limited signed tokens using `itsdangerous` URLSafeTimedSerializer for password reset workflows.
+- **Location Data Privacy**: Reviewer town and state information is strictly isolated to organizer analytics and never rendered on public review pages.
 
-Notes:
+### Browser Support
+- Google Chrome (latest versions)
+- Mozilla Firefox (latest versions)
+- Apple Safari (latest versions)
+- Microsoft Edge (latest versions)
+- Mobile Browsers (iOS Safari, Android Chrome)
 
-- Do not set `PORT` manually in the environment — Render injects it at runtime.
-- If you need persistent storage for generated files (QR codes / CSV exports), either mount a Render Persistent Disk at `FILE_STORAGE_PATH` or implement S3 uploads.
+### Contributing
+1. Fork the repository on GitHub.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request detailing your changes.
 
+### License
+This project is open-source software made available under the [MIT License](LICENSE).
+*(Note: Standard boilerplate; an explicit LICENSE file may be added to the repository root as needed).*
 
-## Security Features
+### Support
+For support, inquiries, or bug reports:
+- Email: ganganiayush2@gmail.com
+- Repository: Open an issue on the repository issue tracker.
 
-- **CSRF Protection**: All forms protected against CSRF attacks
-- **Password Security**: Secure password hashing with Werkzeug
-- **Input Validation**: Comprehensive server-side validation
-- **Session Security**: Secure session management
-- **SQL Injection Prevention**: SQLAlchemy ORM prevents SQL injection
-- **Rate Limiting**: Advanced IP-based rate limiting with global limits (200 per day, 50 per hour) and strict route-specific limits on authentication (`5 per minute; 20 per hour` on `/auth/login`) and public review submissions (`10 per hour` on `/review/<code animate>/submit`).
-
-
-## Browser Support
-
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Support
-
-For support, please contact ganganiayush2@gmail.com or create an issue in the repository.
-
-## Roadmap
-
-### Future Enhancements
-- **Mobile App**: Native iOS and Android applications
-- **Advanced Analytics**: Machine learning-powered sentiment analysis
-- **Integration APIs**: Connect with popular event management platforms
-- **Multi-language Support**: Internationalization for global use
-- **Advanced Moderation**: AI-powered spam and content filtering
-- **White-label Solutions**: Custom branding for enterprise clients
-
----
-
-Built with ❤️ using Flask and modern web technologies.
+### Roadmap
+Future planned enhancements for the Event Review Platform:
+- **Mobile Applications**: Native iOS and Android mobile apps for organizers and attendees.
+- **Sentiment Analysis**: Machine learning integration for automated sentiment scoring on text reviews.
+- **External API Integrations**: Connectors for popular event management platforms (Eventbrite, Meetup).
+- **Multi-language Support**: Internationalization (i18n) for international events.
+- **Advanced Content Moderation**: Automated AI-powered spam and toxic content detection.
+- **White-label Solutions**: Customizable branding and domain aliasing for enterprise clients.
