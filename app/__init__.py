@@ -162,7 +162,13 @@ def create_app():
     else:
         app.logger.warning("MAIL_SERVER is not set; email sending will be logged instead.")
 
-    
+    with app.app_context():
+        from . import models
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"Could not auto-create database tables: {e}")
+
     # Configure security headers
     csp = {
         'default-src': [

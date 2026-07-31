@@ -1,34 +1,141 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="dashboard-container">
-    <div class="section-header">
-        <h1 class="section-title">All Events</h1>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark mb-1">
+                <i class="fas fa-calendar-alt text-primary me-2"></i>Platform Events
+            </h1>
+            <p class="text-muted small mb-0">Browse and monitor all events created across organizer accounts.</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Admin Dashboard
+        </a>
     </div>
-    <div class="events-grid">
+
+    <!-- Search & Filter Bar -->
+    <div class="card p-3 mb-4 shadow-sm border">
+        <form method="GET" action="{{ url_for('main.admin_events') }}" class="row g-2 align-items-center">
+            <div class="col-md-9 col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" id="eventSearchInput" class="form-control border-start-0" placeholder="Search by event title, category, venue..." value="{{ search_query or '' }}">
+                </div>
+            </div>
+            <div class="col-md-3 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i> Search</button>
+                {% if search_query %}
+                    <a href="{{ url_for('main.admin_events') }}" class="btn btn-outline-secondary"><i class="fas fa-undo"></i> Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Events Grid -->
+    <div class="row g-3 mb-4" id="eventsGrid">
         {% for event in events.items %}
-        <article class="event-card">
-            <h2 class="event-title">{{ event.title }}</h2>
-            <p>{{ event.organizer.organization or event.organizer.username }}</p>
-            <p>{{ event.event_date.strftime('%B %d, %Y') }} · {{ event.get_review_count() }} reviews</p>
-        </article>
+        {% set rev_count = event.get_review_count() %}
+        {% set avg_rat = event.get_average_rating() %}
+        <div class="col-md-6 col-lg-4 event-card-wrapper">
+            <div class="card p-4 border shadow-sm h-100 d-flex flex-column" style="min-height: 280px;">
+                <!-- Header Badges -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-primary text-white px-3 py-1 rounded-pill">
+                        <i class="fas fa-tag me-1"></i> {{ event.category }}
+                    </span>
+                    <span class="badge bg-light text-dark border px-2 py-1">
+                        <i class="fas fa-comments me-1 text-primary"></i> {{ rev_count }} Reviews
+                    </span>
+                </div>
+
+                <!-- Event Title -->
+                <h3 class="h5 fw-bold text-dark mb-2">{{ event.title }}</h3>
+
+                <!-- Event Metadata -->
+                <div class="small text-muted mb-3">
+                    <div class="mb-1"><i class="fas fa-user-tie text-secondary me-1"></i> <strong>Organizer:</strong> {{ event.organizer.organization or event.organizer.full_name or event.organizer.username }}</div>
+                    <div class="mb-1"><i class="fas fa-calendar-day text-primary me-1"></i> <strong>Date:</strong> {{ event.event_date.strftime('%B %d, %Y') }}</div>
+                    {% if event.venue %}
+                    <div class="mb-1"><i class="fas fa-map-marker-alt text-danger me-1"></i> <strong>Venue:</strong> {{ event.venue }}</div>
+                    {% endif %}
+                </div>
+
+                {% if event.description %}
+                <p class="small text-secondary mb-3 fst-italic flex-grow-1">"{{ event.description|truncate(80) }}"</p>
+                {% endif %}
+
+                <!-- Feedback Rating & Multi-Color Progress Indicator -->
+                <div class="mb-3 p-2 bg-light rounded border">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-bold text-dark">Average Rating</span>
+                        <span class="small fw-bold text-warning">⭐ {{ "%.1f"|format(avg_rat) }} / 5.0</span>
+                    </div>
+                    {% set pct = (avg_rat / 5.0 * 100) if avg_rat > 0 else 0 %}
+                    <div class="progress" style="height: 6px;">
+                        {% if avg_rat >= 4.5 %}
+                        <div class="progress-bar progress-bar-5star" role="progressbar" style="width: {{ pct }}%;"></div>
+                        {% elif avg_rat >= 3.5 %}
+                        <div class="progress-bar progress-bar-4star" role="progressbar" style="width: {{ pct }}%;"></div>
+                        {% elif avg_rat >= 2.5 %}
+                        <div class="progress-bar progress-bar-3star" role="progressbar" style="width: {{ pct }}%;"></div>
+                        {% else %}
+                        <div class="progress-bar progress-bar-1star" role="progressbar" style="width: {{ pct }}%;"></div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Footer Action -->
+                <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">Code: <code>{{ event.unique_code }}</code></span>
+                    <a href="{{ url_for('main.browse_reviews', unique_code=event.unique_code) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i> Public Reviews
+                    </a>
+                </div>
+            </div>
+        </div>
         {% else %}
-        <div class="empty-state">No events yet.</div>
+        <div class="col-12">
+            <div class="card p-5 text-center text-muted border">
+                <i class="fas fa-calendar-times fs-1 text-secondary mb-3"></i>
+                <h5>No events found</h5>
+                <p class="small mb-0">Try searching for a different keyword.</p>
+            </div>
+        </div>
         {% endfor %}
     </div>
+
+    <!-- Pagination Nav -->
     {% if events.has_prev or events.has_next %}
-    <nav class="pagination" aria-label="Pagination">
-        {% if events.has_prev %}
-        <a href="{{ url_for(request.endpoint, page=events.prev_num, **request.view_args) }}" class="btn btn-small btn-secondary">&laquo; Previous</a>
-        {% else %}
-        <span class="btn btn-small btn-secondary disabled">&laquo; Previous</span>
-        {% endif %}
-        <span class="pagination-info">Page {{ events.page }} of {{ events.pages or 1 }}</span>
-        {% if events.has_next %}
-        <a href="{{ url_for(request.endpoint, page=events.next_num, **request.view_args) }}" class="btn btn-small btn-secondary">Next &raquo;</a>
-        {% else %}
-        <span class="btn btn-small btn-secondary disabled">Next &raquo;</span>
-        {% endif %}
+    <nav class="d-flex justify-content-between align-items-center pt-3 border-top" aria-label="Pagination">
+        <div>
+            <span class="text-muted small">Page {{ events.page }} of {{ events.pages or 1 }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            {% if events.has_prev %}
+                <a href="{{ url_for('main.admin_events', page=events.prev_num, q=search_query) }}" class="btn btn-sm btn-outline-primary">&laquo; Previous</a>
+            {% endif %}
+            {% if events.has_next %}
+                <a href="{{ url_for('main.admin_events', page=events.next_num, q=search_query) }}" class="btn btn-sm btn-outline-primary">Next &raquo;</a>
+            {% endif %}
+        </div>
     </nav>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('eventSearchInput');
+    if (input) {
+        input.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.event-card-wrapper').forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

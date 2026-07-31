@@ -1,2 +1,199 @@
 {% extends "base.html" %}
-{% block content %}<div class="dashboard-container"><div class="dashboard-header"><h1 class="dashboard-title">Platform Admin Console</h1><p class="dashboard-subtitle">Global visibility across all organizer workspaces.</p></div><div class="stats-grid"><div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div><h3 class="stat-number">{{ organizers|length }}</h3><p class="stat-label">Organizers</p></div></div><div class="stat-card"><div class="stat-icon"><i class="fas fa-calendar"></i></div><div><h3 class="stat-number">{{ events|length }}</h3><p class="stat-label">Events</p></div></div><div class="stat-card"><div class="stat-icon"><i class="fas fa-comment"></i></div><div><h3 class="stat-number">{{ total_reviews }}</h3><p class="stat-label">Reviews</p></div></div></div><div class="dashboard-section"><div class="section-header"><h2 class="section-title">Recent platform activity</h2></div><div class="reviews-container">{% for review in recent_reviews %}<div class="review-card"><strong>{{ review.reviewer_name }}</strong> reviewed <strong>{{ review.event.title }}</strong> for {{ review.event.organizer.organization or review.event.organizer.username }} — {{ review.star_rating }}/5</div>{% else %}<div class="empty-state">No reviews yet.</div>{% endfor %}</div></div></div>{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Banner -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark mb-1">
+                <i class="fas fa-shield-halved text-primary me-2"></i>Platform Admin Console
+            </h1>
+            <p class="text-muted small mb-0">Global visibility, real-time insights, and organizer performance across the platform.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('main.admin_organizers') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-users me-1"></i> Manage Organizers
+            </a>
+            <a href="{{ url_for('main.admin_analytics') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-chart-pie me-1"></i> Impact Analytics
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Quick Filter Bar -->
+    <div class="card p-3 mb-4 shadow-sm border">
+        <form method="GET" action="{{ url_for('main.admin_dashboard') }}" class="row g-2 align-items-center">
+            <div class="col-md-9 col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" id="adminSearchInput" class="form-control border-start-0" placeholder="Search organizers, events, or reviews by name, email, title..." value="{{ search_query or '' }}">
+                </div>
+            </div>
+            <div class="col-md-3 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i> Filter</button>
+                {% if search_query %}
+                    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="fas fa-undo"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- KPI Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-primary me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Organizers</div>
+                        <div class="fs-3 fw-bold text-dark">{{ organizers|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-primary me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Events</div>
+                        <div class="fs-3 fw-bold text-dark">{{ events|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-success me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Feedback</div>
+                        <div class="fs-3 fw-bold text-dark">{{ total_reviews }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-warning me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Avg Rating</div>
+                        <div class="fs-3 fw-bold text-dark">{{ avg_platform_rating }} <span class="fs-6 text-muted">/ 5.0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Section Grid: Organizers Performance & Recent Activity -->
+    <div class="row g-4 mb-4">
+        <!-- Organizer Performance & Impact Ratings -->
+        <div class="col-lg-7">
+            <div class="card p-4 border shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <h3 class="h5 fw-bold text-dark mb-0">
+                        <i class="fas fa-trophy text-warning me-2"></i>Organizer Impact & Ratings
+                    </h3>
+                    <a href="{{ url_for('main.admin_organizers') }}" class="small text-primary fw-bold text-decoration-none">View All &rarr;</a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="organizersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Organizer / Org</th>
+                                <th class="text-center">Events</th>
+                                <th class="text-center">Reviews</th>
+                                <th class="text-center">Avg Rating</th>
+                                <th class="text-center">Impact Badge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in organizer_metrics %}
+                            <tr class="searchable-row">
+                                <td>
+                                    <div class="fw-bold text-dark">{{ item.user.full_name or item.user.username }}</div>
+                                    <div class="small text-muted">{{ item.user.organization or item.user.email }}</div>
+                                </td>
+                                <td class="text-center fw-bold">{{ item.event_count }}</td>
+                                <td class="text-center fw-bold">{{ item.review_count }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark px-2 py-1 fs-6">⭐ {{ item.avg_rating }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ item.badge_cls }} px-2 py-1">{{ item.badge }}</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No organizers found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="col-lg-5">
+            <div class="card p-4 border shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <h3 class="h5 fw-bold text-dark mb-0">
+                        <i class="fas fa-clock text-primary me-2"></i>Recent Activity
+                    </h3>
+                    <a href="{{ url_for('main.admin_reviews') }}" class="small text-primary fw-bold text-decoration-none">All Reviews &rarr;</a>
+                </div>
+
+                <div class="recent-reviews-list">
+                    {% for review in recent_reviews %}
+                    <div class="p-3 mb-2 rounded bg-light border searchable-row">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-dark small">{{ review.reviewer_name }}</span>
+                            <span class="badge bg-warning text-dark"><i class="fas fa-star me-1"></i>{{ review.star_rating }}/5</span>
+                        </div>
+                        <div class="small text-muted mb-1">
+                            Reviewed <strong class="text-dark">{{ review.event.title }}</strong> 
+                            ({{ review.event.organizer.organization or review.event.organizer.username }})
+                        </div>
+                        {% if review.review_text %}
+                        <p class="small text-secondary mb-0 fst-italic">"{{ review.review_text|truncate(80) }}"</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">No recent activity.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Client-side real-time live search filter for table & activity
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('adminSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.searchable-row').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

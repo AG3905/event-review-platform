@@ -2,17 +2,15 @@
 
 Usage:
     python scripts/seed_demo.py
-
-It reads optional env vars:
-  DEMO_USERNAME, DEMO_EMAIL, DEMO_PASSWORD
-
-Be careful when running against production databases.
 """
-from app import create_app, db
-from app.models import User, Event
 import os
 import sys
 from datetime import date
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app import create_app, db
+from app.models import User, Event
 
 
 def create_demo_user(username, email, password):
@@ -52,14 +50,12 @@ if __name__ == '__main__':
         email = os.environ.get('DEMO_EMAIL', 'demo@example.com')
         password = os.environ.get('DEMO_PASSWORD', 'DemoPass123')
 
-        # Create tables if database is empty (useful for sqlite demos)
         try:
             db.create_all()
         except Exception as e:
-            print('Warning: create_all() failed — ensure migrations are applied in production. Error:', e)
+            print('Warning: create_all() failed:', e)
 
         user = create_demo_user(username, email, password)
-        # Optionally create a demo event (only if user has no events)
         if not user.events:
             create_demo_event(user)
 

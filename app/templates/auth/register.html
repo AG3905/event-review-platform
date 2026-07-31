@@ -1,76 +1,184 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="auth-container">
+<div class="auth-container auth-container-wide">
     <div class="auth-card">
         <div class="auth-header">
+            <div class="auth-icon-badge mb-2">
+                <i class="fas fa-user-plus"></i>
+            </div>
             <h1 class="auth-title">Create Account</h1>
-            <p class="auth-subtitle">Join our platform today</p>
+            <p class="auth-subtitle">Join EventReviews to manage events and collect feedback</p>
         </div>
 
-        <form method="POST" class="auth-form">
+        <div class="auth-alert-container" id="registerAlertContainer">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' or category == 'danger' else ('success' if category == 'success' else 'info') }} d-flex align-items-center gap-2 mb-3">
+                            <i class="fas {{ 'fa-exclamation-circle' if category == 'error' or category == 'danger' else 'fa-check-circle' }}"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <form method="POST" class="auth-form" id="registerForm" novalidate>
             {{ form.hidden_tag() }}
 
-            <div class="form-row">
-                <div class="form-group">
-                    {{ form.username.label(class="form-label") }}
-                    {{ form.username(class="form-input") }}
-                    {% for error in form.username.errors %}
-                        <div class="form-error">{{ error }}</div>
-                    {% endfor %}
+            <!-- SECTION 1: ACCOUNT INFORMATION -->
+            <div class="form-section mb-4">
+                <div class="form-section-header mb-3">
+                    <span class="section-badge"><i class="fas fa-id-card me-1"></i> Account Information</span>
                 </div>
 
-                <div class="form-group">
-                    {{ form.email.label(class="form-label") }}
-                    {{ form.email(class="form-input") }}
-                    {% for error in form.email.errors %}
-                        <div class="form-error">{{ error }}</div>
-                    {% endfor %}
-                </div>
-            </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.username.label(class="form-label") }}
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-user input-icon" aria-hidden="true"></i>
+                                {{ form.username(class="form-input icon-padding" + (" is-invalid" if form.username.errors else ""), id="reg_username", placeholder="Choose username", required=true, autocomplete="username") }}
+                            </div>
+                            <div class="field-feedback small mt-1" id="usernameFeedback">
+                                {% for error in form.username.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="form-group">
-                {{ form.full_name.label(class="form-label") }}
-                {{ form.full_name(class="form-input") }}
-                {% for error in form.full_name.errors %}
-                    <div class="form-error">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-            <div class="form-group">
-                {{ form.organization.label(class="form-label") }}
-                {{ form.organization(class="form-input", placeholder="Optional") }}
-                {% for error in form.organization.errors %}
-                    <div class="form-error">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    {{ form.password.label(class="form-label") }}
-                    {{ form.password(class="form-input") }}
-                    {% for error in form.password.errors %}
-                        <div class="form-error">{{ error }}</div>
-                    {% endfor %}
-                </div>
-
-                <div class="form-group">
-                    {{ form.password2.label(class="form-label") }}
-                    {{ form.password2(class="form-input") }}
-                    {% for error in form.password2.errors %}
-                        <div class="form-error">{{ error }}</div>
-                    {% endfor %}
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.email.label(class="form-label") }}
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-envelope input-icon" aria-hidden="true"></i>
+                                {{ form.email(class="form-input icon-padding" + (" is-invalid" if form.email.errors else ""), id="reg_email", placeholder="you@example.com", required=true, autocomplete="email") }}
+                            </div>
+                            <div class="field-feedback small mt-1" id="emailFeedback">
+                                {% for error in form.email.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                {{ form.submit(class="btn btn-primary btn-full") }}
+            <!-- SECTION 2: PROFILE INFORMATION -->
+            <div class="form-section mb-4">
+                <div class="form-section-header mb-3">
+                    <span class="section-badge"><i class="fas fa-building me-1"></i> Profile Information</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.full_name.label(class="form-label") }}
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-user-tag input-icon" aria-hidden="true"></i>
+                                {{ form.full_name(class="form-input icon-padding" + (" is-invalid" if form.full_name.errors else ""), id="reg_full_name", placeholder="Full Name", required=true) }}
+                            </div>
+                            <div class="field-feedback small mt-1" id="fullNameFeedback">
+                                {% for error in form.full_name.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label d-flex justify-content-between align-items-center" for="reg_organization">
+                                <span>{{ form.organization.label.text }}</span>
+                                <span class="badge bg-light text-muted border font-normal ms-1">(optional)</span>
+                            </label>
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-briefcase input-icon" aria-hidden="true"></i>
+                                {{ form.organization(class="form-input icon-padding", id="reg_organization", placeholder="Company or Organization Name") }}
+                            </div>
+                            <div class="field-feedback small mt-1" id="orgFeedback">
+                                {% for error in form.organization.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: SECURITY & PASSWORD -->
+            <div class="form-section mb-4">
+                <div class="form-section-header mb-3">
+                    <span class="section-badge"><i class="fas fa-shield-alt me-1"></i> Security Password</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.password.label(class="form-label") }}
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                                {{ form.password(class="form-input icon-padding password-input" + (" is-invalid" if form.password.errors else ""), id="reg_password", placeholder="At least 6 characters", required=true, autocomplete="new-password") }}
+                                <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" tabindex="0">
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="field-feedback small mt-1" id="passwordFeedback">
+                                {% for error in form.password.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.password2.label(class="form-label") }}
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                                {{ form.password2(class="form-input icon-padding password-input" + (" is-invalid" if form.password2.errors else ""), id="reg_password2", placeholder="Re-enter password", required=true, autocomplete="new-password") }}
+                                <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" tabindex="0">
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="field-feedback small mt-1" id="password2Feedback">
+                                {% for error in form.password2.errors %}<span class="text-danger">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Strength Meter & Live Rules -->
+                <div class="password-strength-container mt-3 p-3 bg-light rounded border">
+                    <div class="d-flex justify-content-between align-items-center mb-1 small fw-bold text-dark">
+                        <span>Password Strength:</span>
+                        <span id="strengthText" class="text-muted">Not entered</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar" id="strengthBar" role="progressbar" style="width: 0%; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+                    </div>
+                    <div class="password-rules-checklist d-flex flex-wrap gap-3 small text-muted">
+                        <span id="ruleLength" class="rule-item"><i class="fas fa-circle-notch me-1"></i> Min 6 characters</span>
+                        <span id="ruleMatch" class="rule-item"><i class="fas fa-circle-notch me-1"></i> Passwords match</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TERMS & CONDITIONS CHECKBOX -->
+            <div class="form-group my-3 p-3 bg-light rounded border">
+                <label class="custom-checkbox-container m-0">
+                    <input type="checkbox" class="custom-checkbox-input" id="termsCheck" required>
+                    <span class="custom-checkbox-mark"></span>
+                    <span class="checkbox-label-text small">
+                        I agree to the <a href="#" class="auth-link">Terms of Service</a> and <a href="#" class="auth-link">Privacy Policy</a> <span class="text-danger">*</span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="form-group mt-4">
+                <button type="submit" class="btn btn-primary btn-full btn-submit-loading" id="registerSubmitBtn" disabled>
+                    <span class="btn-text">Create Account</span>
+                    <span class="btn-spinner d-none" aria-hidden="true"><i class="fas fa-spinner fa-spin me-2"></i> Creating Account...</span>
+                </button>
             </div>
         </form>
 
-        <div class="auth-footer">
-            <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Sign in here</a></p>
+        <div class="auth-footer text-center mt-4 pt-3 border-top">
+            <p class="mb-0 text-muted">Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link fw-bold">Sign in here</a></p>
         </div>
     </div>
 </div>
 {% endblock %}
+

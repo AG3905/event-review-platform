@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeNavigation();
     initializeAlerts();
     initializeFormValidation();
+    initializePasswordToggles();
+    initializeLoginForm();
+    initializeRegistrationValidation();
     initializeAnimations();
 });
 
@@ -129,6 +132,9 @@ function initializeFormValidation() {
         form.addEventListener('submit', (e) => {
             const submitBtn = form.querySelector('input[type="submit"], button[type="submit"]');
             if (submitBtn && !submitBtn.disabled) {
+                if (submitBtn.querySelector('.btn-spinner')) {
+                    return;
+                }
                 // Add loading state
                 const originalText = submitBtn.innerHTML;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
@@ -145,10 +151,11 @@ function initializeFormValidation() {
         });
     });
 
-    // Password strength indicator
+    // Password strength indicator (only for new password creation, not sign-in/login)
     const passwordFields = document.querySelectorAll('input[type="password"]');
     passwordFields.forEach(field => {
-        if (field.name === 'password') {
+        const isLoginForm = field.closest('#loginForm') || field.autocomplete === 'current-password';
+        if (field.name === 'password' && !isLoginForm) {
             field.addEventListener('input', () => showPasswordStrength(field));
         }
     });
@@ -596,3 +603,307 @@ window.EventReviewPlatform = {
     debounce,
     throttle
 };
+
+// Password Visibility Toggle Init
+function initializePasswordToggles() {
+    document.querySelectorAll('.password-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const wrapper = this.closest('.input-icon-wrapper');
+            if (!wrapper) return;
+            const input = wrapper.querySelector('input');
+            const icon = this.querySelector('i');
+            if (!input) return;
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+                this.setAttribute('aria-label', 'Hide password');
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+                this.setAttribute('aria-label', 'Show password');
+            }
+        });
+    });
+}
+
+// Login Form Handling & Validation
+function initializeLoginForm() {
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) return;
+
+    const uInput = document.getElementById('username');
+    const pInput = document.getElementById('password');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+
+    loginForm.addEventListener('submit', function(e) {
+        let valid = true;
+        const uErr = document.getElementById('usernameError');
+        const pErr = document.getElementById('passwordError');
+
+        if (!uInput || !uInput.value.trim()) {
+            valid = false;
+            if (uInput) uInput.classList.add('is-invalid');
+            if (uErr) uErr.textContent = 'Please enter your username';
+        }
+
+        if (!pInput || !pInput.value) {
+            valid = false;
+            if (pInput) pInput.classList.add('is-invalid');
+            if (pErr) pErr.textContent = 'Please enter your password';
+        }
+
+        if (!valid) {
+            e.preventDefault();
+            return;
+        }
+
+        if (submitBtn) {
+            const textSpan = submitBtn.querySelector('.btn-text');
+            const spinnerSpan = submitBtn.querySelector('.btn-spinner');
+            if (textSpan) textSpan.classList.add('d-none');
+            if (spinnerSpan) spinnerSpan.classList.remove('d-none');
+            submitBtn.disabled = true;
+        }
+    });
+}
+
+// Registration Form Live Validation & Availability Checks
+function initializeRegistrationValidation() {
+    const regForm = document.getElementById('registerForm');
+    if (!regForm) return;
+
+    const usernameInput = document.getElementById('reg_username');
+    const emailInput = document.getElementById('reg_email');
+    const fullNameInput = document.getElementById('reg_full_name');
+    const passwordInput = document.getElementById('reg_password');
+    const password2Input = document.getElementById('reg_password2');
+    const termsCheck = document.getElementById('termsCheck');
+    const submitBtn = document.getElementById('registerSubmitBtn');
+
+    const strengthBar = document.getElementById('strengthBar');
+    const strengthText = document.getElementById('strengthText');
+    const ruleLength = document.getElementById('ruleLength');
+    const ruleMatch = document.getElementById('ruleMatch');
+
+    let usernameAvailable = false;
+    let emailAvailable = false;
+
+    function checkFormValidity() {
+        const uVal = usernameInput ? usernameInput.value.trim() : '';
+        const eVal = emailInput ? emailInput.value.trim() : '';
+        const nVal = fullNameInput ? fullNameInput.value.trim() : '';
+        const pVal = passwordInput ? passwordInput.value : '';
+        const p2Val = password2Input ? password2Input.value : '';
+        const isTerms = termsCheck ? termsCheck.checked : false;
+
+        const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eVal);
+        const isPasswordMatch = pVal.length >= 6 && pVal === p2Val;
+
+        const isValid = uVal.length >= 3 && usernameAvailable && isEmailValid && emailAvailable && nVal.length > 0 && isPasswordMatch && isTerms;
+        if (submitBtn) {
+            submitBtn.disabled = !isValid;
+        }
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function() {
+            const val = this.value;
+            let score = 0;
+
+            if (val.length >= 6) score++;
+            if (/[a-z]/.test(val) && /[A-Z]/.test(val)) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+
+            if (ruleLength) {
+                if (val.length >= 6) {
+                    ruleLength.className = 'rule-item text-success fw-bold';
+                    ruleLength.querySelector('i').className = 'fas fa-check-circle me-1';
+                } else {
+                    ruleLength.className = 'rule-item text-muted';
+                    ruleLength.querySelector('i').className = 'fas fa-circle-notch me-1';
+                }
+            }
+
+            if (strengthBar && strengthText) {
+                if (val.length === 0) {
+                    strengthBar.style.width = '0%';
+                    strengthText.textContent = 'Not entered';
+                    strengthText.className = 'text-muted';
+                } else if (val.length < 6) {
+                    strengthBar.style.width = '25%';
+                    strengthBar.style.backgroundColor = '#ef4444';
+                    strengthText.textContent = 'Weak (Too short)';
+                    strengthText.className = 'text-danger';
+                } else if (score <= 2) {
+                    strengthBar.style.width = '55%';
+                    strengthBar.style.backgroundColor = '#f59e0b';
+                    strengthText.textContent = 'Medium';
+                    strengthText.className = 'text-warning';
+                } else {
+                    strengthBar.style.width = '100%';
+                    strengthBar.style.backgroundColor = '#10b981';
+                    strengthText.textContent = 'Strong';
+                    strengthText.className = 'text-success';
+                }
+            }
+
+            if (password2Input && password2Input.value) {
+                checkMatch();
+            }
+            checkFormValidity();
+        });
+    }
+
+    function checkMatch() {
+        if (!passwordInput || !password2Input) return;
+        const p1 = passwordInput.value;
+        const p2 = password2Input.value;
+        const feedback = document.getElementById('password2Feedback');
+
+        if (p2.length > 0 && p1 === p2) {
+            password2Input.classList.remove('is-invalid');
+            password2Input.classList.add('is-valid');
+            if (feedback) feedback.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i> Passwords match</span>';
+            if (ruleMatch) {
+                ruleMatch.className = 'rule-item text-success fw-bold';
+                ruleMatch.querySelector('i').className = 'fas fa-check-circle me-1';
+            }
+        } else if (p2.length > 0) {
+            password2Input.classList.remove('is-valid');
+            password2Input.classList.add('is-invalid');
+            if (feedback) feedback.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i> Passwords do not match</span>';
+            if (ruleMatch) {
+                ruleMatch.className = 'rule-item text-muted';
+                ruleMatch.querySelector('i').className = 'fas fa-circle-notch me-1';
+            }
+        } else {
+            password2Input.classList.remove('is-valid', 'is-invalid');
+            if (feedback) feedback.innerHTML = '';
+        }
+    }
+
+    if (password2Input) {
+        password2Input.addEventListener('input', function() {
+            checkMatch();
+            checkFormValidity();
+        });
+    }
+
+    let usernameTimeout;
+    if (usernameInput) {
+        usernameInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            const feedback = document.getElementById('usernameFeedback');
+            clearTimeout(usernameTimeout);
+
+            if (val.length < 3) {
+                usernameAvailable = false;
+                usernameInput.classList.remove('is-valid');
+                if (val.length > 0) {
+                    usernameInput.classList.add('is-invalid');
+                    if (feedback) feedback.innerHTML = '<span class="text-danger">Username must be at least 3 characters</span>';
+                } else {
+                    usernameInput.classList.remove('is-invalid');
+                    if (feedback) feedback.innerHTML = '';
+                }
+                checkFormValidity();
+                return;
+            }
+
+            usernameTimeout = setTimeout(() => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                fetch('/api/check-username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ username: val })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    usernameAvailable = data.available;
+                    if (data.available) {
+                        usernameInput.classList.remove('is-invalid');
+                        usernameInput.classList.add('is-valid');
+                        if (feedback) feedback.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i> Username available</span>';
+                    } else {
+                        usernameInput.classList.remove('is-valid');
+                        usernameInput.classList.add('is-invalid');
+                        if (feedback) feedback.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i> Username already taken</span>';
+                    }
+                    checkFormValidity();
+                })
+                .catch(() => {
+                    usernameAvailable = true;
+                    checkFormValidity();
+                });
+            }, 300);
+        });
+    }
+
+    let emailTimeout;
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            const feedback = document.getElementById('emailFeedback');
+            clearTimeout(emailTimeout);
+
+            const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+            if (!isEmailValid) {
+                emailAvailable = false;
+                emailInput.classList.remove('is-valid');
+                if (val.length > 0) {
+                    emailInput.classList.add('is-invalid');
+                    if (feedback) feedback.innerHTML = '<span class="text-danger">Please enter a valid email address</span>';
+                } else {
+                    emailInput.classList.remove('is-invalid');
+                    if (feedback) feedback.innerHTML = '';
+                }
+                checkFormValidity();
+                return;
+            }
+
+            emailTimeout = setTimeout(() => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                fetch('/api/check-user-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ email: val })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    emailAvailable = data.available;
+                    if (data.available) {
+                        emailInput.classList.remove('is-invalid');
+                        emailInput.classList.add('is-valid');
+                        if (feedback) feedback.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i> Email available</span>';
+                    } else {
+                        emailInput.classList.remove('is-valid');
+                        emailInput.classList.add('is-invalid');
+                        if (feedback) feedback.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i> Email already registered</span>';
+                    }
+                    checkFormValidity();
+                })
+                .catch(() => {
+                    emailAvailable = true;
+                    checkFormValidity();
+                });
+            }, 300);
+        });
+    }
+
+    if (fullNameInput) fullNameInput.addEventListener('input', checkFormValidity);
+    if (termsCheck) termsCheck.addEventListener('change', checkFormValidity);
+
+    regForm.addEventListener('submit', function(e) {
+        if (submitBtn) {
+            const textSpan = submitBtn.querySelector('.btn-text');
+            const spinnerSpan = submitBtn.querySelector('.btn-spinner');
+            if (textSpan) textSpan.classList.add('d-none');
+            if (spinnerSpan) spinnerSpan.classList.remove('d-none');
+            submitBtn.disabled = true;
+        }
+    });
+}
+

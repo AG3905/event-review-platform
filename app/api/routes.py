@@ -116,6 +116,33 @@ def check_email():
         'message': 'You have already reviewed this event' if existing_review else 'Email available'
     })
 
+@bp.route('/check-username', methods=['POST'])
+def check_username():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    if not username:
+        return jsonify({'available': False, 'message': 'Username is required'}), 400
+
+    existing_user = User.query.filter_by(username=username).first()
+    return jsonify({
+        'available': existing_user is None,
+        'message': 'Username is already taken' if existing_user else 'Username is available'
+    })
+
+@bp.route('/check-user-email', methods=['POST'])
+def check_user_email():
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'available': False, 'message': 'Email is required'}), 400
+
+    existing_user = User.query.filter_by(email=email).first()
+    return jsonify({
+        'available': existing_user is None,
+        'message': 'Email is already registered' if existing_user else 'Email is available'
+    })
+
+
 @bp.route('/suggested-questions', methods=['GET'])
 def get_suggested_questions():
     category = request.args.get('category', 'Other')

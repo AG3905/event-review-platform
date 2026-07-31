@@ -4,44 +4,77 @@
 <div class="auth-container">
     <div class="auth-card">
         <div class="auth-header">
+            <div class="auth-icon-badge mb-2">
+                <i class="fas fa-user-lock"></i>
+            </div>
             <h1 class="auth-title">Welcome Back</h1>
-            <p class="auth-subtitle">Sign in to your account</p>
+            <p class="auth-subtitle">Sign in to manage your events and reviews</p>
         </div>
 
-        <form method="POST" class="auth-form">
+        <div class="auth-alert-container" id="loginAlertContainer">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' or category == 'danger' else ('success' if category == 'success' else 'info') }} d-flex align-items-center gap-2 mb-3">
+                            <i class="fas {{ 'fa-exclamation-circle' if category == 'error' or category == 'danger' else 'fa-check-circle' }}"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <form method="POST" class="auth-form" id="loginForm" novalidate>
             {{ form.hidden_tag() }}
 
-            <div class="form-group">
+            <div class="form-group mb-3">
                 {{ form.username.label(class="form-label") }}
-                {{ form.username(class="form-input") }}
-                {% for error in form.username.errors %}
-                    <div class="form-error">{{ error }}</div>
-                {% endfor %}
+                <div class="input-icon-wrapper">
+                    <i class="fas fa-user input-icon" aria-hidden="true"></i>
+                    {{ form.username(class="form-input icon-padding" + (" is-invalid" if form.username.errors else ""), id="username", placeholder="Enter your username", required=true, autocomplete="username") }}
+                </div>
+                <div class="field-error-msg text-danger small mt-1" id="usernameError">
+                    {% for error in form.username.errors %}{{ error }}{% endfor %}
+                </div>
             </div>
 
-            <div class="form-group">
-                {{ form.password.label(class="form-label") }}
-                {{ form.password(class="form-input") }}
-                {% for error in form.password.errors %}
-                    <div class="form-error">{{ error }}</div>
-                {% endfor %}
+            <div class="form-group mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    {{ form.password.label(class="form-label mb-0") }}
+                    <a href="{{ url_for('auth.forgot_password') }}" class="auth-link small-link">Forgot password?</a>
+                </div>
+                <div class="input-icon-wrapper">
+                    <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                    {{ form.password(class="form-input icon-padding password-input" + (" is-invalid" if form.password.errors else ""), id="password", placeholder="Enter your password", required=true, autocomplete="current-password") }}
+                    <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" tabindex="0">
+                        <i class="fas fa-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div class="field-error-msg text-danger small mt-1" id="passwordError">
+                    {% for error in form.password.errors %}{{ error }}{% endfor %}
+                </div>
             </div>
 
-            <div class="form-group checkbox-group">
-                {{ form.remember_me() }}
-                {{ form.remember_me.label() }}
+            <div class="form-group checkbox-group d-flex align-items-center my-3">
+                <label class="custom-checkbox-container">
+                    {{ form.remember_me(class="custom-checkbox-input", id="remember_me") }}
+                    <span class="custom-checkbox-mark"></span>
+                    <span class="checkbox-label-text">{{ form.remember_me.label.text }}</span>
+                </label>
             </div>
 
-            <div class="form-group">
-                {{ form.submit(class="btn btn-primary btn-full") }}
+            <div class="form-group mt-4">
+                <button type="submit" class="btn btn-primary btn-full btn-submit-loading" id="loginSubmitBtn">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-spinner d-none" aria-hidden="true"><i class="fas fa-spinner fa-spin me-2"></i> Signing in...</span>
+                </button>
             </div>
         </form>
 
-        <div class="auth-footer">
-            <p><a href="{{ url_for('auth.forgot_password') }}" class="auth-link">Forgot your password?</a></p>
-            <p>Don't have an account? <a href="{{ url_for('auth.register') }}" class="auth-link">Sign up here</a></p>
+        <div class="auth-footer text-center mt-4 pt-3 border-top">
+            <p class="mb-0 text-muted">Don't have an account? <a href="{{ url_for('auth.register') }}" class="auth-link fw-bold">Sign up here</a></p>
         </div>
-
     </div>
 </div>
 {% endblock %}
+

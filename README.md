@@ -93,157 +93,19 @@ The Event Review Platform is a full-stack Flask web application designed for eve
 
 ## 4. Database Schema
 
-The database consists of 6 tables defined using SQLAlchemy ORM in `app/models.py`.
+The database consists of 7 tables defined using SQLAlchemy ORM in `app/models.py` (`users`, `events`, `reviews`, `event_questions`, `review_answers`, `saved_question_sets`, and `alembic_version`).
 
-+-------------------------------------------------------------------------------+
-|                                    USERS                                      |
-+-------------------+---------------+-------------------------------------------+
-| Field             | Type          | Attributes                                |
-+-------------------+---------------+-------------------------------------------+
-| id                | INTEGER       | Primary Key, Auto Increment               |
-| username          | VARCHAR(50)   | Unique, Not Null                          |
-| email             | VARCHAR(100)  | Unique, Not Null                          |
-| password_hash     | VARCHAR(255)  | Not Null                                  |
-| full_name         | VARCHAR(100)  | Nullable                                  |
-| organization      | VARCHAR(100)  | Nullable                                  |
-| created_at        | DATETIME      | Default: UTC Now                          |
-| last_login        | DATETIME      | Nullable                                  |
-| is_active         | BOOLEAN       | Default: True                             |
-| role              | VARCHAR(20)   | Index, Not Null, Default: 'organizer'     |
-+-------------------+---------------+-------------------------------------------+
-         |                                           |
-         | 1-to-Many                                 | 1-to-Many
-         v                                           v
-+-----------------------------------+     +-------------------------------------+
-|              EVENTS               |     |         SAVED_QUESTION_SETS         |
-+-------------------+---------------+     +------------------+------------------+
-| Field             | Type          |     | Field            | Type             |
-+-------------------+---------------+     +------------------+------------------+
-| id                | INT (PK)      |     | id               | INT (PK)         |
-| user_id           | INT (FK)      |     | organizer_id     | INT (FK)         |
-| title             | VARCHAR(200)  |     | name             | VARCHAR(100)     |
-| category          | VARCHAR(50)   |     | questions        | TEXT (JSON)      |
-| is_custom_cat     | BOOLEAN       |     +------------------+------------------+
-| description       | TEXT          |       Foreign Key: organizer_id -> users.id
-| venue             | VARCHAR(200)  |
-| event_date        | DATE          |
-| event_time        | TIME          |
-| capacity          | INTEGER       |
-| status            | VARCHAR(20)   |
-| unique_code       | VARCHAR(10) U |
-| allow_reviews     | BOOLEAN       |
-| allow_loc_q       | BOOLEAN       |
-| created_at        | DATETIME      |
-| updated_at        | DATETIME      |
-+-------------------+---------------+
-  Foreign Key: user_id -> users.id
-         |
-         +-----------------------------------+
-         | 1-to-Many                         | 1-to-Many
-         v                                   v
-+-----------------------------------+     +-------------------------------------+
-|              REVIEWS              |     |           EVENT_QUESTIONS           |
-+-------------------+---------------+     +------------------+------------------+
-| Field             | Type          |     | Field            | Type             |
-+-------------------+---------------+     +------------------+------------------+
-| id                | INT (PK)      |     | id               | INT (PK)         |
-| event_id          | INT (FK)      |     | event_id         | INT (FK)         |
-| reviewer_name     | VARCHAR(100)  |     | question_text    | VARCHAR(300)     |
-| reviewer_email    | VARCHAR(100)  |     | question_type    | VARCHAR(20)      |
-| reviewer_town     | VARCHAR(100)  |     | options          | TEXT (JSON)      |
-| reviewer_state    | VARCHAR(100)  |     | is_required      | BOOLEAN          |
-| star_rating       | INTEGER       |     | display_order    | INTEGER          |
-| review_text       | TEXT          |     | is_active        | BOOLEAN          |
-| review_categories | TEXT (JSON)   |     +------------------+------------------+
-| attendee_type     | VARCHAR(50)   |       Foreign Key: event_id -> events.id
-| would_recommend   | BOOLEAN       |                |
-| submitted_at      | DATETIME      |                | 1-to-Many
-| ip_address        | VARCHAR(45)   |                |
-| user_agent        | TEXT          |                v
-| is_approved       | BOOLEAN       |     +-------------------------------------+
-| is_featured       | BOOLEAN       |     |           REVIEW_ANSWERS            |
-| helpful_votes     | INTEGER       |     +------------------+------------------+
-+-------------------+---------------+     | Field            | Type             |
-  Foreign Key: event_id -> events.id      +------------------+------------------+
-  Unique Constraint: (event_id, email)    | id               | INT (PK)         |
-         |                                | review_id        | INT (FK)         |
-         | 1-to-Many                      | question_id      | INT (FK)         |
-         v                                | answer_text      | TEXT             |
-+-----------------------------------+     +------------------+------------------+
-|          REVIEW_ANSWERS           |       Foreign Keys:
-|   (linked via review_id FK)       |       - review_id -> reviews.id
-+-----------------------------------+       - question_id -> event_questions.id
+![Database Schema Diagram](docs/screenshots/database_schema.png)
 
 
 ## 5. Architecture Diagram
 
-+---------------------------------------------------------------------------------+
-|                                  CLIENT LAYER                                   |
-|   Web Browsers (Desktop & Mobile) / Public Attendees / Organizers / Admins      |
-+---------------------------------------------------------------------------------+
-                                         |
-                                         | HTTP / HTTPS Requests
-                                         v
-+---------------------------------------------------------------------------------+
-|                                WEB SERVER LAYER                                 |
-|   Gunicorn WSGI Server (Binding: 0.0.0.0:$PORT, 4 Worker Processes)             |
-+---------------------------------------------------------------------------------+
-                                         |
-                                         v
-+---------------------------------------------------------------------------------+
-|                             APPLICATION LAYER (FLASK)                           |
-|  +---------------------------------------------------------------------------+  |
-|  |                             App Factory (app)                             |  |
-|  +---------------------------------------------------------------------------+  |
-|  | Blueprints:                                                               |  |
-|  |  - Auth BP (/auth)   : Login, Register, Profile, Password Reset           |  |
-|  |  - Main BP (/)       : Dashboard, Event CRUD, Review Wizard, Admin views  |  |
-|  |  - API BP (/api)     : Moderation, Analytics, Polls, Question Templates   |  |
-|  +---------------------------------------------------------------------------+  |
-|  | Security & Middleware:                                                    |  |
-|  |  - Flask-Talisman (CSP Headers) | Flask-Limiter (Rate Control)            |  |
-|  |  - Flask-WTF (CSRF Protection)  | Flask-Login (Session Handling)          |  |
-|  +---------------------------------------------------------------------------+  |
-+---------------------------------------------------------------------------------+
-        |                        |                        |                       |
-        v                        v                        v                       v
-+---------------+        +---------------+        +---------------+       +---------------+
-|   ORM LAYER   |        | CACHE / STORE |        | MAIL SERVICE  |       | ERROR TRACKING|
-|  SQLAlchemy   |        | Redis (7.0)   |        | Flask-Mail    |       | Sentry SDK    |
-+---------------+        +---------------+        +---------------+       +---------------+
-        |                        |                        |                       |
-        v                        |                        v                       v
-+---------------+                |                 SMTP Server             Sentry Cloud
-|   DATABASE    |                v
-| PostgreSQL /  |         Rate Limit Data
-| SQLite Engine |
-+---------------+
+![System Architecture Diagram](docs/screenshots/architecture_diagram.png)
 
 
 ## 6. Use Case Diagram
 
-+---------------------------------------------------------------------------------+
-|                                 SYSTEM ACTORS                                   |
-+---------------------+-------------------------------+---------------------------+
-| ORGANIZER           | PUBLIC REVIEWER (ATTENDEE)    | PLATFORM ADMIN            |
-+---------------------+-------------------------------+---------------------------+
-| - Register Account  | - Access Event via URL/QR     | - View Platform Admin     |
-| - Sign In / Out     | - Complete Review Wizard      |   Dashboard               |
-| - Manage Profile &  | - Submit Rating & Feedback    | - View All Organizers     |
-|   Password          | - Answer Custom Questions     | - View All Events         |
-| - Create Event      | - Submit Town/State (Private) | - View All Reviews        |
-| - Edit Event        | - Browse Approved Reviews     | - View System Analytics   |
-| - Delete Event      |                               | - Moderate Any Review     |
-| - Configure Custom  |                               |                           |
-|   Questions         |                               |                           |
-| - Save Question     |                               |                           |
-|   Sets              |                               |                           |
-| - Generate QR Code  |                               |                           |
-| - View Analytics    |                               |                           |
-| - Moderate Reviews  |                               |                           |
-| - Export Reviews    |                               |                           |
-|   to CSV            |                               |                           |
-+---------------------+-------------------------------+---------------------------+
+![Use Case Diagram](docs/screenshots/use_case_diagram.png)
 
 
 ## 7. Live Demo Link
@@ -272,6 +134,9 @@ Below are captured screenshots of the deployed Event Review Platform interface:
 
 ### Organizer Event Dashboard & Analytics
 ![Organizer Event Dashboard](docs/screenshots/event_details_dashboard.png)
+
+### Platform Admin Console
+![Platform Admin Console](docs/screenshots/admin_console.png)
 
 
 ## 9. Project Structure

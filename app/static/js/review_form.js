@@ -20,28 +20,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------
     // Star Rating Widget (Step 1)
     // -------------------------------------------------------------
-    const stars = form.querySelectorAll('#starRating .star');
+    const starBtns = form.querySelectorAll('#starRating .star-btn, #starRating .star');
     const ratingInput = document.getElementById('star_rating');
     const ratingText = document.getElementById('ratingText');
+    const ratingErrorMsg = document.getElementById('ratingErrorMsg');
+    const step1NextBtn = document.getElementById('step1NextBtn');
+
     const ratingMessages = {
-        1: '1/5 - Poor', 2: '2/5 - Fair',
-        3: '3/5 - Good', 4: '4/5 - Very Good',
+        1: '1/5 - Poor', 
+        2: '2/5 - Fair',
+        3: '3/5 - Good', 
+        4: '4/5 - Very Good',
         5: '5/5 - Outstanding!'
     };
 
-    const highlightStars = (rating) => {
-        stars.forEach((star, idx) => {
-            star.classList.toggle('text-warning', idx < rating);
-            star.classList.toggle('text-muted', idx >= rating);
+    const highlightStars = (rating, isHover = false) => {
+        starBtns.forEach((btn) => {
+            const r = parseInt(btn.dataset.rating, 10);
+            if (isHover) {
+                btn.classList.toggle('hovered', r <= rating);
+            } else {
+                btn.classList.toggle('selected', r <= rating);
+                btn.classList.remove('hovered');
+            }
         });
     };
 
-    stars.forEach(star => {
-        star.addEventListener('click', () => {
-            const r = parseInt(star.dataset.rating, 10);
-            if (ratingInput) ratingInput.value = r;
-            highlightStars(r);
+    let selectedRating = ratingInput && ratingInput.value ? parseInt(ratingInput.value, 10) : 0;
+    if (selectedRating > 0) {
+        highlightStars(selectedRating);
+        if (ratingText) ratingText.textContent = ratingMessages[selectedRating] || '';
+        if (step1NextBtn) step1NextBtn.disabled = false;
+    }
+
+    starBtns.forEach(btn => {
+        const r = parseInt(btn.dataset.rating, 10);
+
+        btn.addEventListener('mouseenter', () => {
+            highlightStars(r, true);
             if (ratingText) ratingText.textContent = ratingMessages[r];
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            highlightStars(selectedRating);
+            if (ratingText) {
+                ratingText.textContent = selectedRating > 0 ? ratingMessages[selectedRating] : 'Tap a star to rate';
+            }
+        });
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            selectedRating = r;
+            if (ratingInput) ratingInput.value = r;
+            highlightStars(selectedRating);
+            if (ratingText) ratingText.textContent = ratingMessages[r];
+            if (ratingErrorMsg) ratingErrorMsg.classList.add('d-none');
+            if (step1NextBtn) step1NextBtn.disabled = false;
         });
     });
 
@@ -71,6 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progressFill) progressFill.style.width = `${pct}%`;
         if (stepText) stepText.textContent = stepTitles[currentStep] || `Step ${currentStep} of ${totalSteps}`;
         if (percentText) percentText.textContent = `${pct}%`;
+
+        document.querySelectorAll('.wizard-step-pill').forEach(pill => {
+            const pillStep = parseInt(pill.dataset.stepPill, 10);
+            pill.classList.toggle('active', pillStep === currentStep);
+            pill.classList.toggle('completed', pillStep < currentStep);
+        });
+
+        document.querySelectorAll('.wizard-step-line').forEach((line, idx) => {
+            line.classList.toggle('completed', idx < currentStep - 1);
+        });
     }
 
     function showStep(stepNum) {
@@ -92,8 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function validateCurrentStep() {
         if (currentStep === 1) {
-            if (!ratingInput || !ratingInput.value) {
-                alert('Please select an overall star rating before proceeding.');
+            if (!ratingInput || !ratingInput.value || parseInt(ratingInput.value, 10) < 1) {
+                if (ratingErrorMsg) ratingErrorMsg.classList.remove('d-none');
+                if (step1NextBtn) step1NextBtn.disabled = true;
                 return false;
             }
         } else if (currentStep === 2) {

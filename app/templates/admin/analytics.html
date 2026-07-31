@@ -1,12 +1,185 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="dashboard-container">
-    <div class="dashboard-header"><h1 class="dashboard-title">Platform Analytics</h1><p class="dashboard-subtitle">A global view across all organizer tenants.</p></div>
-    <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div><h3 class="stat-number">{{ total_organizers }}</h3><p class="stat-label">Organizers</p></div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="fas fa-calendar"></i></div><div><h3 class="stat-number">{{ total_events }}</h3><p class="stat-label">Events</p></div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="fas fa-comment"></i></div><div><h3 class="stat-number">{{ total_reviews }}</h3><p class="stat-label">Approved Reviews</p></div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="fas fa-star"></i></div><div><h3 class="stat-number">{{ '%.1f'|format(average_rating) }}</h3><p class="stat-label">Average Rating</p></div></div>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark mb-1">
+                <i class="fas fa-chart-pie text-primary me-2"></i>Platform Analytics & Organizer Impact
+            </h1>
+            <p class="text-muted small mb-0">Global analytics, rating breakdown, and organizer performance rankings across the platform.</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Admin Dashboard
+        </a>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="card p-3 mb-4 shadow-sm border">
+        <form method="GET" action="{{ url_for('main.admin_analytics') }}" class="row g-2 align-items-center">
+            <div class="col-md-9 col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" id="analyticsSearchInput" class="form-control border-start-0" placeholder="Search organizer rankings by name, email, organization..." value="{{ search_query or '' }}">
+                </div>
+            </div>
+            <div class="col-md-3 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i> Search</button>
+                {% if search_query %}
+                    <a href="{{ url_for('main.admin_analytics') }}" class="btn btn-outline-secondary"><i class="fas fa-undo"></i> Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- KPI Metric Cards Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-primary me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Organizers</div>
+                        <div class="fs-3 fw-bold text-dark">{{ total_organizers }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-primary me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Events Hosted</div>
+                        <div class="fs-3 fw-bold text-dark">{{ total_events }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-success me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Feedback</div>
+                        <div class="fs-3 fw-bold text-dark">{{ total_reviews }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card p-3 border shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 text-warning me-3 fs-4" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Avg Rating</div>
+                        <div class="fs-3 fw-bold text-dark">{{ average_rating }} <span class="fs-6 text-muted">/ 5.0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Distribution & Impact Breakdown -->
+    <div class="row g-4 mb-4">
+        <!-- Visual Rating Distribution -->
+        <div class="col-lg-5">
+            <div class="card p-4 border shadow-sm h-100">
+                <h3 class="h5 fw-bold text-dark mb-3 pb-2 border-bottom">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>Star Rating Breakdown
+                </h3>
+
+                <div class="rating-bars-container">
+                    {% for star in range(5, 0, -1) %}
+                    {% set count = dist.get(star, 0) %}
+                    {% set pct = (count / total_reviews * 100) if total_reviews > 0 else 0 %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-dark">⭐ {{ star }} Stars</span>
+                            <span class="small text-muted fw-bold">{{ count }} reviews ({{ '%.0f'|format(pct) }}%)</span>
+                        </div>
+                        <div class="progress" style="height: 10px; background-color: #f1f5f9 !important;">
+                            <div class="progress-bar progress-bar-{{ star }}star" role="progressbar" style="width: {{ pct }}%; transition: width 0.4s ease;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Organizer Impact & Leaderboard Ranking Table -->
+        <div class="col-lg-7">
+            <div class="card p-4 border shadow-sm h-100">
+                <h3 class="h5 fw-bold text-dark mb-3 pb-2 border-bottom">
+                    <i class="fas fa-award text-warning me-2"></i>Organizer Impact Leaderboard
+                </h3>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="analyticsRankingsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">Rank</th>
+                                <th>Organizer</th>
+                                <th class="text-center">Events</th>
+                                <th class="text-center">Reviews</th>
+                                <th class="text-center">Rating</th>
+                                <th class="text-center">Impact Tier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in organizer_rankings %}
+                            <tr class="searchable-rank-row">
+                                <td class="fw-bold text-secondary">#{{ loop.index }}</td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ item.user.full_name or item.user.username }}</div>
+                                    <div class="small text-muted">{{ item.user.organization or item.user.email }}</div>
+                                </td>
+                                <td class="text-center fw-bold">{{ item.total_events }}</td>
+                                <td class="text-center fw-bold">{{ item.total_reviews }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark px-2 py-1 fs-6">⭐ {{ item.avg_rating }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ item.badge_color }} px-2 py-1">{{ item.impact_badge }}</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">No organizer data available.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('analyticsSearchInput');
+    if (input) {
+        input.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.searchable-rank-row').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -189,19 +189,22 @@
     </form>
 </div>
 
+<script id="initial-questions-data" type="application/json">
+[
+    {% for q in active_questions %}
+    {
+        "id": {{ q.id }},
+        "question_text": {{ q.question_text|tojson }},
+        "question_type": {{ q.question_type|tojson }},
+        "options": {{ q.get_options()|tojson }},
+        "is_required": {{ 'true' if q.is_required else 'false' }},
+        "display_order": {{ q.display_order }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
 <script>
-    window.INITIAL_QUESTIONS = [
-        {% for q in active_questions %}
-        {
-            id: {{ q.id }},
-            question_text: {{ q.question_text|tojson }},
-            question_type: {{ q.question_type|tojson }},
-            options: {{ q.get_options()|tojson }},
-            is_required: {{ 'true' if q.is_required else 'false' }},
-            display_order: {{ q.display_order }}
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ];
+    window.INITIAL_QUESTIONS = JSON.parse(document.getElementById('initial-questions-data').textContent || '[]');
 </script>
 <script src="{{ url_for('static', filename='js/question_builder.js') }}"></script>
 {% endblock %}

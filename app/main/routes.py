@@ -452,12 +452,74 @@ def browse_reviews(unique_code):
 @bp.route('/admin')
 @admin_required
 def admin_dashboard():
-    organizers = User.query.filter_by(role='organizer').order_by(User.created_at.desc()).all()
-    events = Event.query.order_by(Event.created_at.desc()).all()
-    recent_reviews = Review.query.order_by(Review.submitted_at.desc()).limit(10).all()
+    q = request.args.get('q', '').strip()
+    organizers_query = User.query.filter_by(role='organizer')
+    if q:
+        organizers_query = organizers_query.filter(
+            (User.username.ilike(f'%{q}%')) |
+            (User.email.ilike(f'%{q}%')) |
+            (User.full_name.ilike(f'%{q}%')) |
+            (User.organization.ilike(f'%{q}%'))
+        )
+    organizers = organizers_query.order_by(User.created_at.desc()).all()
+
+    # Calculate metrics for organizers
+    organizer_metrics = []
+    for org in organizers:
+        tot_ev = org.get_event_count()
+        tot_rev = org.get_total_reviews()
+        avg_rat = round(org.get_average_rating(), 1)
+        
+        if avg_rat >= 4.5 and tot_rev >= 3:
+            badge = 'Top Performer'
+            badge_cls = 'success'
+        elif avg_rat >= 3.5:
+            badge = 'High Rating'
+            badge_cls = 'primary'
+        elif tot_ev > 0:
+            badge = 'Active'
+            badge_cls = 'info'
+        else:
+            badge = 'New'
+            badge_cls = 'secondary'
+
+        organizer_metrics.append({
+            'user': org,
+            'event_count': tot_ev,
+            'review_count': tot_rev,
+            'avg_rating': avg_rat,
+            'badge': badge,
+            'badge_cls': badge_cls
+        })
+
+    events_query = Event.query
+    if q:
+        events_query = events_query.filter(
+            (Event.title.ilike(f'%{q}%')) |
+            (Event.category.ilike(f'%{q}%')) |
+            (Event.venue.ilike(f'%{q}%'))
+        )
+    events = events_query.order_by(Event.created_at.desc()).all()
+
+    reviews_query = Review.query
+    if q:
+        reviews_query = reviews_query.filter(
+            (Review.reviewer_name.ilike(f'%{q}%')) |
+            (Review.review_text.ilike(f'%{q}%'))
+        )
+    recent_reviews = reviews_query.order_by(Review.submitted_at.desc()).limit(10).all()
+    all_reviews = Review.query.all()
+    avg_platform_rating = (sum(r.star_rating for r in all_reviews) / len(all_reviews)) if all_reviews else 0.0
+
     return render_template(
-        'admin/dashboard.html', title='Platform Admin Console', organizers=organizers,
-        events=events, total_reviews=Review.query.count(), recent_reviews=recent_reviews
+        'admin/dashboard.html', title='Platform Admin Console',
+        organizers=organizers,
+        organizer_metrics=organizer_metrics,
+        events=events,
+        total_reviews=len(all_reviews),
+        recent_reviews=recent_reviews,
+        avg_platform_rating=round(avg_platform_rating, 1),
+        search_query=q
     )
 
 
@@ -465,40 +527,147 @@ def admin_dashboard():
 @admin_required
 def admin_organizers():
     page = request.args.get('page', 1, type=int)
-    organizers = User.query.filter_by(role='organizer').order_by(User.created_at.desc())\
-        .paginate(page=page, per_page=PER_PAGE, error_out=False)
-    return render_template('admin/organizers.html', title='Organizers', organizers=organizers)
+    q = request.args.get('q', '').strip()
+    query = User.query.filter_by(role='organizer')
+    if q:
+        query = query.filter(
+            (User.username.ilike(f'%{q}%')) |
+            (User.email.ilike(f'%{q}%')) |
+            (User.full_name.ilike(f'%{q}%')) |
+            (User.organization.ilike(f'%{q}%'))
+        )
+    organizers = query.order_by(User.created_at.desc()).paginate(page=page, per_page=PER_PAGE, error_out=False)
+    
+    org_list = []
+    for org in organizers.items:
+        tot_ev = org.get_event_count()
+        tot_rev = org.get_total_reviews()
+        avg_rat = round(org.get_average_rating(), 1)
+        if avg_rat >= 4.5 and tot_rev >= 3:
+            badge = 'Top Performer'
+            badge_cls = 'success'
+        elif avg_rat >= 3.5:
+            badge = 'High Impact'
+            badge_cls = 'primary'
+        elif tot_ev > 0:
+            badge = 'Active'
+            badge_cls = 'info'
+        else:
+            badge = 'New'
+            badge_cls = 'secondary'
+            
+        org_list.append({
+            'user': org,
+            'avg_rating': avg_rat,
+            'total_reviews': tot_rev,
+            'total_events': tot_ev,
+            'badge': badge,
+            'badge_cls': badge_cls
+        })
+
+    return render_template('admin/organizers.html', title='Organizers Directory', organizers=organizers, org_list=org_list, search_query=q)
 
 
 @bp.route('/admin/events')
 @admin_required
 def admin_events():
     page = request.args.get('page', 1, type=int)
-    events = Event.query.order_by(Event.created_at.desc())\
-        .paginate(page=page, per_page=PER_PAGE, error_out=False)
-    return render_template('admin/events.html', title='All Events', events=events)
+    q = request.args.get('q', '').strip()
+    query = Event.query
+    if q:
+        query = query.filter(
+            (Event.title.ilike(f'%{q}%')) |
+            (Event.category.ilike(f'%{q}%')) |
+            (Event.venue.ilike(f'%{q}%'))
+        )
+    events = query.order_by(Event.created_at.desc()).paginate(page=page, per_page=PER_PAGE, error_out=False)
+    return render_template('admin/events.html', title='Platform Events', events=events, search_query=q)
 
 
 @bp.route('/admin/reviews')
 @admin_required
 def admin_reviews():
     page = request.args.get('page', 1, type=int)
-    reviews = Review.query.order_by(Review.submitted_at.desc())\
-        .paginate(page=page, per_page=PER_PAGE, error_out=False)
-    return render_template('admin/reviews.html', title='All Reviews', reviews=reviews)
+    q = request.args.get('q', '').strip()
+    rating_filter = request.args.get('rating', type=int)
+    query = Review.query
+    if q:
+        query = query.filter(
+            (Review.reviewer_name.ilike(f'%{q}%')) |
+            (Review.reviewer_email.ilike(f'%{q}%')) |
+            (Review.review_text.ilike(f'%{q}%'))
+        )
+    if rating_filter:
+        query = query.filter_by(star_rating=rating_filter)
+    reviews = query.order_by(Review.submitted_at.desc()).paginate(page=page, per_page=PER_PAGE, error_out=False)
+    return render_template('admin/reviews.html', title='All Platform Reviews', reviews=reviews, search_query=q, rating_filter=rating_filter)
 
 
 @bp.route('/admin/analytics')
 @admin_required
 def admin_analytics():
-    approved_reviews = Review.query.filter_by(is_approved=True).all()
-    ratings = [review.star_rating for review in approved_reviews]
+    q = request.args.get('q', '').strip()
+    all_reviews = Review.query.all()
+    ratings = [review.star_rating for review in all_reviews]
+    
+    # Calculate star distribution
+    dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for r in all_reviews:
+        dist[r.star_rating] = dist.get(r.star_rating, 0) + 1
+        
+    total_reviews_count = len(all_reviews)
+    avg_rating = round((sum(ratings) / len(ratings)), 1) if ratings else 0.0
+
+    # Organizer impact ranking
+    organizers_query = User.query.filter_by(role='organizer')
+    if q:
+        organizers_query = organizers_query.filter(
+            (User.username.ilike(f'%{q}%')) |
+            (User.email.ilike(f'%{q}%')) |
+            (User.full_name.ilike(f'%{q}%')) |
+            (User.organization.ilike(f'%{q}%'))
+        )
+    organizers = organizers_query.all()
+    
+    organizer_rankings = []
+    for org in organizers:
+        tot_ev = org.get_event_count()
+        tot_rev = org.get_total_reviews()
+        avg_rat = round(org.get_average_rating(), 1)
+        
+        if avg_rat >= 4.5 and tot_rev >= 3:
+            impact_badge = '🏆 Top Performer'
+            badge_color = 'success'
+        elif avg_rat >= 3.5:
+            impact_badge = '⭐ High Impact'
+            badge_color = 'primary'
+        elif tot_ev > 0:
+            impact_badge = '📈 Growing'
+            badge_color = 'info'
+        else:
+            impact_badge = '🆕 New / Idle'
+            badge_color = 'secondary'
+            
+        organizer_rankings.append({
+            'user': org,
+            'total_events': tot_ev,
+            'total_reviews': tot_rev,
+            'avg_rating': avg_rat,
+            'impact_badge': impact_badge,
+            'badge_color': badge_color
+        })
+        
+    organizer_rankings.sort(key=lambda x: (x['total_reviews'], x['avg_rating']), reverse=True)
+
     return render_template(
-        'admin/analytics.html', title='Platform Analytics',
-        total_reviews=len(approved_reviews),
-        average_rating=(sum(ratings) / len(ratings)) if ratings else 0,
+        'admin/analytics.html', title='Platform Analytics & Impact Report',
+        total_reviews=total_reviews_count,
+        average_rating=avg_rating,
         total_organizers=User.query.filter_by(role='organizer').count(),
         total_events=Event.query.count(),
+        dist=dist,
+        organizer_rankings=organizer_rankings,
+        search_query=q
     )
 
 

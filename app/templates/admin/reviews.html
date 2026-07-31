@@ -1,38 +1,132 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="dashboard-container">
-    <div class="section-header">
-        <h1 class="section-title">All Reviews</h1>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark mb-1">
+                <i class="fas fa-comments text-primary me-2"></i>All Platform Reviews
+            </h1>
+            <p class="text-muted small mb-0">Inspect and monitor feedback submitted by event attendees across all events.</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Admin Dashboard
+        </a>
     </div>
-    <div class="reviews-container">
-        {% for review in reviews.items %}
-        <article class="review-card">
-            <div class="review-header">
-                <strong>{{ review.reviewer_name }}</strong>
-                <span>{{ review.star_rating }}/5 · {{ review.event.title }} · {{ review.event.organizer.organization or review.event.organizer.username }}</span>
+
+    <!-- Search & Filter Controls -->
+    <div class="card p-3 mb-4 shadow-sm border">
+        <form method="GET" action="{{ url_for('main.admin_reviews') }}" class="row g-2 align-items-center mb-2">
+            <div class="col-md-9 col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" id="reviewSearchInput" class="form-control border-start-0" placeholder="Search by reviewer name, email, or review text..." value="{{ search_query or '' }}">
+                </div>
             </div>
-            {% if review.review_text %}
-            <p class="review-text">{{ review.review_text }}</p>
-            {% endif %}
-        </article>
+            <div class="col-md-3 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i> Search</button>
+                {% if search_query or rating_filter %}
+                    <a href="{{ url_for('main.admin_reviews') }}" class="btn btn-outline-secondary"><i class="fas fa-undo"></i> Reset</a>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- Rating Filter Quick Pills -->
+        <div class="d-flex align-items-center flex-wrap gap-2 pt-2 border-top">
+            <span class="small text-muted fw-bold me-2">Filter by Rating:</span>
+            <a href="{{ url_for('main.admin_reviews', q=search_query) }}" class="btn btn-sm {% if not rating_filter %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">All</a>
+            {% for r in range(5, 0, -1) %}
+            <a href="{{ url_for('main.admin_reviews', q=search_query, rating=r) }}" class="btn btn-sm {% if rating_filter == r %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+                ⭐ {{ r }} Star
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Reviews List -->
+    <div class="row g-3 mb-4" id="reviewsList">
+        {% for review in reviews.items %}
+        <div class="col-12 review-card-wrapper">
+            <div class="card p-4 border shadow-sm">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                    <div>
+                        <h4 class="h6 fw-bold text-dark mb-0 d-inline-block me-2">{{ review.reviewer_name }}</h4>
+                        {% if review.reviewer_email %}
+                        <span class="small text-muted">&lt;{{ review.reviewer_email }}&gt;</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="badge bg-warning text-dark px-3 py-2 fs-6 rounded-pill">
+                            <i class="fas fa-star me-1"></i> {{ review.star_rating }} / 5.0
+                        </span>
+                        {% if review.would_recommend is not none %}
+                            {% if review.would_recommend %}
+                            <span class="badge bg-success text-white px-2 py-1"><i class="fas fa-thumbs-up me-1"></i> Recommends</span>
+                            {% else %}
+                            <span class="badge bg-danger text-white px-2 py-1"><i class="fas fa-thumbs-down me-1"></i> Does Not Recommend</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="small text-muted mb-2">
+                    <span class="me-3"><i class="fas fa-calendar-check text-primary me-1"></i> <strong>Event:</strong> {{ review.event.title }}</span>
+                    <span><i class="fas fa-user-tie text-secondary me-1"></i> <strong>Organizer:</strong> {{ review.event.organizer.organization or review.event.organizer.username }}</span>
+                </div>
+
+                {% if review.review_text %}
+                <div class="p-3 bg-light rounded border text-dark mb-2">
+                    "{{ review.review_text }}"
+                </div>
+                {% endif %}
+
+                <div class="small text-muted text-end">
+                    <i class="fas fa-clock me-1"></i> Submitted: {{ review.submitted_at.strftime('%B %d, %Y at %I:%M %p') if review.submitted_at else 'N/A' }}
+                </div>
+            </div>
+        </div>
         {% else %}
-        <div class="empty-state">No reviews yet.</div>
+        <div class="col-12">
+            <div class="card p-5 text-center text-muted border">
+                <i class="fas fa-comment-slash fs-1 text-secondary mb-3"></i>
+                <h5>No reviews found</h5>
+                <p class="small mb-0">Try clearing rating filters or search keywords.</p>
+            </div>
+        </div>
         {% endfor %}
     </div>
+
+    <!-- Pagination Nav -->
     {% if reviews.has_prev or reviews.has_next %}
-    <nav class="pagination" aria-label="Pagination">
-        {% if reviews.has_prev %}
-        <a href="{{ url_for(request.endpoint, page=reviews.prev_num, **request.view_args) }}" class="btn btn-small btn-secondary">&laquo; Previous</a>
-        {% else %}
-        <span class="btn btn-small btn-secondary disabled">&laquo; Previous</span>
-        {% endif %}
-        <span class="pagination-info">Page {{ reviews.page }} of {{ reviews.pages or 1 }}</span>
-        {% if reviews.has_next %}
-        <a href="{{ url_for(request.endpoint, page=reviews.next_num, **request.view_args) }}" class="btn btn-small btn-secondary">Next &raquo;</a>
-        {% else %}
-        <span class="btn btn-small btn-secondary disabled">Next &raquo;</span>
-        {% endif %}
+    <nav class="d-flex justify-content-between align-items-center pt-3 border-top" aria-label="Pagination">
+        <div>
+            <span class="text-muted small">Page {{ reviews.page }} of {{ reviews.pages or 1 }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            {% if reviews.has_prev %}
+                <a href="{{ url_for('main.admin_reviews', page=reviews.prev_num, q=search_query, rating=rating_filter) }}" class="btn btn-sm btn-outline-primary">&laquo; Previous</a>
+            {% endif %}
+            {% if reviews.has_next %}
+                <a href="{{ url_for('main.admin_reviews', page=reviews.next_num, q=search_query, rating=rating_filter) }}" class="btn btn-sm btn-outline-primary">Next &raquo;</a>
+            {% endif %}
+        </div>
     </nav>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('reviewSearchInput');
+    if (input) {
+        input.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.review-card-wrapper').forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

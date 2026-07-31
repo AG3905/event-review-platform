@@ -11,6 +11,19 @@
 <body>
     <div class="ambient-background" aria-hidden="true"><span></span><span></span><span></span></div>
 
+    <header class="header public-header shadow-sm bg-white">
+        <nav class="navbar py-2">
+            <div class="nav-container d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('main.index') }}" class="nav-logo text-decoration-none">
+                    <i class="fas fa-star text-primary me-2"></i><span class="fw-bold text-dark fs-5">Event<span class="text-primary">Reviews</span></span>
+                </a>
+                <div class="public-nav-badge text-muted small">
+                    <i class="fas fa-comment-dots text-primary me-1"></i> Attendee Feedback Portal
+                </div>
+            </div>
+        </nav>
+    </header>
+
     <main class="main-content">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
